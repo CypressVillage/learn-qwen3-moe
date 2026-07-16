@@ -62,7 +62,7 @@
 2. **Run：再运行。** 执行代码，完整观察输出和报错；不要只看最后一行。
 3. **Explain：后解释。** 对照预测与实际结果，用一句完整的话解释一致或不一致的原因。
 
-例如，看到下面的代码时，不要立刻运行：
+例如，看到下面的代码时，不要立刻运行。`import torch` 导入 PyTorch；`torch.arange(12)` 创建包含整数 0 到 11 的一维 Tensor；`reshape(3, 4)` 在元素总数不变的前提下把它组织成 3 行 4 列，并返回 shape 为 `[3, 4]` 的 Tensor。`.shape` 属性返回每个维度的长度。`x[:, 1:3]` 是切片：`:` 保留第 0 维的所有行，`1:3` 取得第 1 维中下标 1 和 2 两列，因此结果 shape 为 `[3, 2]`。
 
 ```python
 import torch
@@ -153,7 +153,7 @@ PY
 
 ### 3. 运行 CPU 必做冒烟测试
 
-先明确预测：下面的 Tensor 形状是什么，元素总数是多少，运行设备是什么？写下答案后再执行。
+先明确预测：下面的 Tensor 形状是什么，元素总数是多少，运行设备是什么？写下答案后再执行。`numel()` 方法计算并返回 Tensor 的元素总数；`.device` 属性返回 Tensor 当前所在的计算设备。这里没有指定其他设备，因此预期是 CPU。
 
 ```bash
 python - <<'PY'
@@ -171,7 +171,7 @@ PY
 
 ### 4. 可选 CUDA 冒烟测试
 
-只有上面的 CPU 测试通过，并且版本检查显示 `CUDA available: True` 时，才运行这一段：
+只有上面的 CPU 测试通过，并且版本检查显示 `CUDA available: True` 时，才运行这一段。传给 `torch.arange` 的 `device="cuda"` 参数要求 PyTorch 直接在默认 CUDA 设备上创建结果，而不是先创建 CPU Tensor；因此成功分支中的 `x.device` 应显示 CUDA 设备。
 
 ```bash
 python - <<'PY'
