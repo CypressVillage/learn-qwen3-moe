@@ -23,6 +23,8 @@
 
 ## 第 1 周：张量、形状与显存
 
+完整教程：[第一周教程：张量、形状与内存](tutorials/week01-tensors-shapes-memory.md)
+
 **概念**
 
 - PyTorch tensor、rank、shape、stride、dtype、device、`numel()`。

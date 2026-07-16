@@ -51,6 +51,8 @@ learn-qwen3-moe/
 
 ## 第一次学习会话
 
+**开始学习：[第一周教程：张量、形状与内存](docs/tutorials/week01-tensors-shapes-memory.md)**
+
 当前可以直接执行以下命令；它们只验证基础环境和学习文档，不下载模型：
 
 ```bash
