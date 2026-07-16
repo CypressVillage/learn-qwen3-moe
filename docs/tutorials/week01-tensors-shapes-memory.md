@@ -550,17 +550,520 @@ tensor([[101, 102,   0],
 <a id="module-4"></a>
 ## 模块 4：stride、transpose 与 contiguous
 
-本模块将用小矩阵观察 stride、转置后的内存布局，以及何时需要把 Tensor 转为 contiguous。
+前面主要观察了 Tensor 的 values 和 shape。本模块再加一层：**逻辑形状**说明下标怎样组织数据，**存储布局**说明沿某个维度移动一个位置时，要在底层存储中跨过多少个元素。两个 Tensor 可以包含相同元素，却有不同的 shape、stride 或连续性。
+
+### 4.1 用二维小矩阵读懂 `stride()`
+
+`stride()` 方法返回每个维度的步长。某一维的 stride 是 `n`，表示该维下标增加 1、其他下标不变时，在底层存储中要跨过 `n` 个元素。stride 的单位是“元素个数”，不是字节。
+
+下面的 `matrix` 有 3 行 4 列。它按行连续存放，所以同一行向右移动一列只跨 1 个元素，向下移动一行要跨 4 个元素。
+
+**Predict：** 先完整画出 values，再预测 `matrix.shape`、`matrix.stride()` 和 `matrix.is_contiguous()`。`is_contiguous()` 方法检查 Tensor 是否采用 PyTorch 当前要求的连续布局，并返回 Python 布尔值。
+
+```python
+import torch
+
+matrix = torch.arange(12).reshape(3, 4)
+
+print(matrix)
+print("shape:", tuple(matrix.shape))
+print("stride:", matrix.stride())
+print("contiguous:", matrix.is_contiguous())
+```
+
+预期输出为：
+
+```text
+tensor([[ 0,  1,  2,  3],
+        [ 4,  5,  6,  7],
+        [ 8,  9, 10, 11]])
+shape: (3, 4)
+stride: (4, 1)
+contiguous: True
+```
+
+`matrix[1, 2]` 是 6。按照 stride，从 `matrix[0, 0]` 走到它，需要沿第 0 维走 1 步、沿第 1 维走 2 步，因此底层位置偏移量是 `1 * 4 + 2 * 1 = 6`。这个小计算把逻辑下标 `[1, 2]` 和存储步长 `(4, 1)` 连接了起来。
+
+### 4.2 `transpose` 改变逻辑视图，不自动重排存储
+
+`transpose(dim0, dim1)` 的用途是交换两个维度，并返回交换后的 Tensor。下面交换矩阵的行维和列维。values 的二维显示会变化，但 `transposed[0, 1]` 仍对应原来的 `matrix[1, 0]`。
+
+**Predict：** 先把原矩阵的列写成新矩阵的行。新 shape 是什么？原 stride `(4, 1)` 中的两个数字会怎样交换？
+
+```python
+transposed = matrix.transpose(0, 1)
+
+print(transposed)
+print("shape:", tuple(transposed.shape))
+print("stride:", transposed.stride())
+print("contiguous:", transposed.is_contiguous())
+print("same logical value:", transposed[0, 1].item(), matrix[1, 0].item())
+```
+
+预期输出为：
+
+```text
+tensor([[ 0,  4,  8],
+        [ 1,  5,  9],
+        [ 2,  6, 10],
+        [ 3,  7, 11]])
+shape: (4, 3)
+stride: (1, 4)
+contiguous: False
+same logical value: 4 4
+```
+
+这里的 shape `(4, 3)` 是逻辑视图：现在看起来有 4 行 3 列。stride `(1, 4)` 是存储布局：沿新第 0 维走一步，只跨底层 1 个元素；沿新第 1 维走一步，要跨 4 个元素。`transpose` 在这个例子中返回共享原存储的非连续 view，没有把 values 复制成新的逐行顺序。
+
+### 4.3 亲眼看到非连续 `view` 失败
+
+`view(12)` 想把 Tensor 直接解释成一段连续的一维数据。对上面的 `transposed`，逻辑遍历顺序是 `0, 4, 8, 1, 5, 9, ...`，但它的 stride 不能直接表示这个一维顺序，因此 `view` 会抛出 `RuntimeError`。
+
+下面必须保留 `try/except`。代码打印异常对象中**实际错误文本的最后一行**；不同 PyTorch 版本的措辞可能不同，因此不要把教程中的某一句英文当成要背的固定答案。
+
+`reshape(12)` 会在可能时返回 view，布局不允许时也可以创建副本。`contiguous()` 的用途是返回采用连续布局的 Tensor；输入已经连续时可能直接返回原 Tensor，输入不连续时会生成连续数据。随后 `view(12)` 就能成功。
+
+**Predict：** 两种成功结果的 values 应该是什么？它们为什么都不等于原 `matrix` 逐行展平后的 `0, 1, 2, ...`？
+
+```python
+try:
+    transposed.view(12)
+except RuntimeError as error:
+    print("view error type:", type(error).__name__)
+    print("view error last line:")
+    print(str(error).splitlines()[-1])
+
+reshaped = transposed.reshape(12)
+contiguous_view = transposed.contiguous().view(12)
+
+print("reshape values:", reshaped)
+print("reshape contiguous:", reshaped.is_contiguous())
+print("contiguous().view values:", contiguous_view)
+print("contiguous().view contiguous:", contiguous_view.is_contiguous())
+```
+
+应观察到：
+
+```text
+view error type: RuntimeError
+view error last line:
+reshape values: tensor([ 0,  4,  8,  1,  5,  9,  2,  6, 10,  3,  7, 11])
+reshape contiguous: True
+contiguous().view values: tensor([ 0,  4,  8,  1,  5,  9,  2,  6, 10,  3,  7, 11])
+contiguous().view contiguous: True
+```
+
+`view error last line:` 后面还会多一行由当前 PyTorch 版本产生的实际英文错误；上面的固定输出没有伪造该版本相关文本。两条成功路径都保持 `transposed` 的**逻辑元素顺序**，所以本例打印相同 values。但是不能由此声称二者总有相同复制行为：`reshape` 自己决定能否共享存储；`contiguous().view(...)` 则先明确请求连续布局，再创建 view。选择 API 时应描述这个语义差异，而不是只比较一次运行的 values。
+
+### 4.4 `permute` 一次重排多个维度
+
+`permute(dims)` 的用途是按给定顺序重新排列所有维度。参数必须列出每个原维度一次。下面的 `cube` 是 `[B, S, D] = [2, 2, 3]`；`permute(1, 2, 0)` 把轴顺序从 `[B, S, D]` 改成 `[S, D, B]`。
+
+**Predict：** 先在纸上写出新 shape `[2, 3, 2]`。再检查新 Tensor 的最后一维：它应把两个 batch 中相同 `S`、`D` 位置的 values 放在一起。
+
+```python
+cube = torch.arange(12).reshape(2, 2, 3)
+reordered = cube.permute(1, 2, 0)
+
+print("cube:")
+print(cube)
+print("cube shape/stride:", tuple(cube.shape), cube.stride())
+print("reordered [S, D, B]:")
+print(reordered)
+print("reordered shape/stride:", tuple(reordered.shape), reordered.stride())
+print("reordered contiguous:", reordered.is_contiguous())
+```
+
+预期输出为：
+
+```text
+cube:
+tensor([[[ 0,  1,  2],
+         [ 3,  4,  5]],
+
+        [[ 6,  7,  8],
+         [ 9, 10, 11]]])
+cube shape/stride: (2, 2, 3) (6, 3, 1)
+reordered [S, D, B]:
+tensor([[[ 0,  6],
+         [ 1,  7],
+         [ 2,  8]],
+
+        [[ 3,  9],
+         [ 4, 10],
+         [ 5, 11]]])
+reordered shape/stride: (2, 3, 2) (3, 1, 6)
+reordered contiguous: False
+```
+
+### 常见误区
+
+- **把 shape 当成存储顺序：** shape 只说明每个逻辑轴的长度；还要看 stride 和连续性，才能描述下标如何映射到底层存储。
+- **认为 `transpose` 或 `permute` 会自动复制并重排数据：** 它们通常返回共享存储、stride 改变的 view。需要连续布局时应显式检查或调用 `contiguous()`。
+- **认为非连续 Tensor 不能参与任何计算：** 很多 PyTorch 运算能直接处理非连续输入；本例失败的是对布局有特定要求的 `view`。
+- **认为 `reshape` 和 `contiguous().view` 总是同样复制：** 本例 values 相同不代表内部路径永远相同。`reshape` 可能共享也可能复制，`contiguous()` 则明确保证返回连续布局。
+
+### 练习
+
+**M4-E1**：不运行代码，分析 `x = torch.arange(6).reshape(2, 3)`。写出 `x` 和 `x.transpose(0, 1)` 的 values、shape、stride 与 `is_contiguous()`，再用一个下标等式说明转置前后的 value 对应关系。
+
+**M4-E2**：给定 `x = torch.arange(24).reshape(2, 3, 4)`，预测 `y = x.permute(2, 0, 1)` 的 shape 和 stride。说明新三个轴分别来自原来的哪个轴，并判断 `y.is_contiguous()`。最后比较 `y.reshape(24)` 与 `y.contiguous().view(24)`：应比较哪些可观察结果，又不能仅凭一次结果断言什么？
+
+### 模块 4 验收
+
+1. 你能否分别用一句话解释 shape、stride 和 `is_contiguous()` 回答什么问题？
+2. 你能否根据 `(3, 4)` 的连续矩阵推导 stride `(4, 1)`，再推导转置后的 `(1, 4)`？
+3. 你能否保留并解释一次真实的非连续 `view` 报错，再正确使用 `reshape` 或 `contiguous().view(...)`？
+4. 你能否解释为什么两种成功路径 values 相同，也不能证明它们总有相同复制行为？
 
 <a id="module-5"></a>
 ## 模块 5：广播与矩阵乘法
 
-本模块将用逐维比较的方法判断广播是否合法，并区分逐元素运算、向量点积和矩阵乘法的形状规则。
+广播和矩阵乘法都会让不同 shape 的 Tensor 一起计算，但规则完全不同。广播比较对应维度能否做逐元素运算；矩阵乘法则收缩一对相等的内维度。先在纸上对齐 shape，能避免把两套规则混在一起。
+
+### 5.1 广播从尾部维度开始比较
+
+两个 shape 做逐元素运算时，从最右侧维度开始逐项对齐。每一对维度必须满足以下条件之一：
+
+1. 两个长度相等。
+2. 其中一个长度是 1，可以沿该维扩展使用。
+3. 某个 shape 左侧没有该维，把它视为长度 1。
+
+如果任意一对都不满足，广播失败。所谓“扩展”是逻辑上的重复使用，不要求先手工创建一份更大的 Tensor。
+
+先取 `hidden [B, S, D] = [2, 3, 2]`：
+
+```text
+hidden:       [2, 3, 2]
+feature_bias: [      2]
+补齐后:       [1, 1, 2]
+结果:         [2, 3, 2]
+```
+
+从右向左解释每一维：`D` 维是 `2` 对 `2`，长度相等；`S` 维是 `3` 对补齐的 `1`，bias 沿三个位置使用；`B` 维是 `2` 对补齐的 `1`，bias 沿两个 batch 使用。因此 `[B, S, D] + [D] -> [B, S, D]`。
+
+**Predict：** 下面的 `[10, 100]` 会加到每个 token 的哪两个数上？先写出 12 个结果 values。
+
+```python
+import torch
+
+hidden = torch.arange(12, dtype=torch.float32).reshape(2, 3, 2)
+feature_bias = torch.tensor([10.0, 100.0])
+biased = hidden + feature_bias
+
+print("hidden:")
+print(hidden)
+print("feature_bias shape:", tuple(feature_bias.shape))
+print("biased:")
+print(biased)
+print("biased shape:", tuple(biased.shape))
+```
+
+预期输出为：
+
+```text
+hidden:
+tensor([[[ 0.,  1.],
+         [ 2.,  3.],
+         [ 4.,  5.]],
+
+        [[ 6.,  7.],
+         [ 8.,  9.],
+         [10., 11.]]])
+feature_bias shape: (2,)
+biased:
+tensor([[[ 10., 101.],
+         [ 12., 103.],
+         [ 14., 105.]],
+
+        [[ 16., 107.],
+         [ 18., 109.],
+         [ 20., 111.]]])
+biased shape: (2, 3, 2)
+```
+
+再对齐 `[B, S, D] + [S, 1]`：
+
+```text
+hidden:          [2, 3, 2]
+position_offset: [   3, 1]
+补齐后:          [1, 3, 1]
+结果:            [2, 3, 2]
+```
+
+右侧 `D` 维是 `2` 对 `1`，每个位置的 offset 加到两个特征上；中间 `S` 维是 `3` 对 `3`，三个 offset 分别对应三个 token 位置；左侧 `B` 维是 `2` 对补齐的 `1`，同一组位置 offset 用于两个 batch。因此 `[B, S, D] + [S, 1] -> [B, S, D]`。
+
+**Predict：** 三行 offset 分别只对应 `S = 0, 1, 2`。先预测它们怎样跨两个 batch、两个特征重复使用。
+
+```python
+position_offset = torch.tensor([[100.0], [200.0], [300.0]])
+shifted = hidden + position_offset
+
+print("position_offset shape:", tuple(position_offset.shape))
+print(shifted)
+print("shifted shape:", tuple(shifted.shape))
+```
+
+预期输出为：
+
+```text
+position_offset shape: (3, 1)
+tensor([[[100., 101.],
+         [202., 203.],
+         [304., 305.]],
+
+        [[106., 107.],
+         [208., 209.],
+         [310., 311.]]])
+shifted shape: (2, 3, 2)
+```
+
+形状 `[2, 2]` 则不能与 `[2, 3, 2]` 广播：从右侧看 `2` 对 `2` 合法，但下一维是 `3` 对 `2`，既不相等也没有 1。`torch.ones(shape)` 创建给定 shape、values 全为 1 的 Tensor；这里用它提供确定性的失败输入。下面打印当前 PyTorch 版本返回的真实错误文本：
+
+```python
+try:
+    hidden + torch.ones(2, 2)
+except RuntimeError as error:
+    print("broadcast error type:", type(error).__name__)
+    print(str(error).splitlines()[-1])
+```
+
+不要从报错中猜一个新 shape 反复尝试。先在纸上右对齐 `[2, 3, 2]` 和 `[2, 2]`，定位冲突的 `3` 与 `2`，再决定数据本来应该按 batch、位置还是特征对齐。
+
+### 5.2 `*` 是逐元素乘法，不是矩阵乘法
+
+对 Tensor 使用 `*` 时，PyTorch 按广播规则做逐元素乘法。下面的 `feature_scale [D]` 依次缩放每个隐藏向量的两个特征，输出仍是 `[B, S, D]`。
+
+**Predict：** 右对齐 `[2, 3, 2]` 与 `[2]`，再预测每个隐藏向量的第一个数和第二个数分别乘什么。
+
+```python
+feature_scale = torch.tensor([10.0, 0.1])
+elementwise = hidden * feature_scale
+
+print(elementwise)
+print("elementwise shape:", tuple(elementwise.shape))
+```
+
+应观察第一个特征乘 10、第二个特征乘 0.1，shape 仍为 `(2, 3, 2)`。这里没有求行列点积，也没有消去任何维度。
+
+### 5.3 `@` 收缩 `D`，保留 `B`、`S` 并产生 `H`
+
+`@` 对 Tensor 执行矩阵乘法，与这里使用 `torch.matmul` 的含义相同。令 `hidden [B, S, D] = [2, 3, 2]`，`projection [D, H] = [2, 3]`：
+
+```text
+hidden:     [B, S, D] = [2, 3, 2]
+projection:       [D, H] =    [2, 3]
+                         相等的 D 收缩
+output:     [B, S, H] = [2, 3, 3]
+```
+
+`D` 是收缩维度：每个长度为 2 的隐藏向量与 `projection` 的每一列做点积，`D` 不再出现在输出 shape 中。`B` 和 `S` 是批次维度，被保留；矩阵右侧的 `H = 3` 成为新的最后一维。
+
+**Predict：** 下面的 projection 会把向量 `[a, b]` 变成 `[a, b, a + b]`。据此手算全部输出，再运行。
+
+```python
+projection = torch.tensor(
+    [[1.0, 0.0, 1.0],
+     [0.0, 1.0, 1.0]]
+)
+output = hidden @ projection
+
+print("projection shape:", tuple(projection.shape))
+print(output)
+print("output shape:", tuple(output.shape))
+print("same as torch.matmul:", torch.equal(output, torch.matmul(hidden, projection)))
+```
+
+`torch.equal(a, b)` 在两个 Tensor 的 shape、dtype 和 values 都相同时返回 `True`。预期输出为：
+
+```text
+projection shape: (2, 3)
+tensor([[[ 0.,  1.,  1.],
+         [ 2.,  3.,  5.],
+         [ 4.,  5.,  9.]],
+
+        [[ 6.,  7., 13.],
+         [ 8.,  9., 17.],
+         [10., 11., 21.]]])
+output shape: (2, 3, 3)
+same as torch.matmul: True
+```
+
+矩阵乘法要求左侧最后一维与右侧倒数第二维相等。下面故意使用 `[4, 3]` 的矩阵，使 `hidden` 的 `D = 2` 与矩阵的输入维 `4` 冲突，并打印实际 `RuntimeError`：
+
+```python
+bad_projection = torch.ones(4, 3)
+
+try:
+    hidden @ bad_projection
+except RuntimeError as error:
+    print("matmul error type:", type(error).__name__)
+    print("hidden shape:", tuple(hidden.shape))
+    print("bad projection shape:", tuple(bad_projection.shape))
+    print("matmul error last line:")
+    print(str(error).splitlines()[-1])
+```
+
+运行时最后一行由当前 PyTorch 版本产生。无论英文措辞如何，调试重点都是自己打印的两个 shape：`[2, 3, 2] @ [4, 3]` 中，应该相等的收缩维度是 `2` 和 `4`，但它们不同。
+
+### 常见误区
+
+- **从左侧开始比较广播：** 广播必须从尾部右对齐；左侧缺失的维度才视为 1。
+- **看到长度 1 就随意对齐：** 维度位置仍然重要。`[S, 1]` 右对齐到 `[B, S, D]`，不是自动寻找名字为 `S` 的轴。
+- **把 `*` 当成线性层：** `*` 做逐元素乘法并遵循广播；`@`/`torch.matmul` 做矩阵乘法并收缩内维度。
+- **只背 `[B,S,D] @ [D,H]` 的结果：** 真正需要检查的是左侧最后一维 `D` 是否等于右侧倒数第二维 `D`，并明确哪些维度保留、收缩和新产生。
+
+### 练习
+
+**M5-E1**：对 `x [B, S, D] = [2, 4, 3]`，先右对齐并判断以下 shape 能否与它相加：`[3]`、`[4, 1]`、`[2, 1, 3]`、`[2, 4]`。对每个维度逐项说明相等、长度为 1，或发生冲突；不要只写“能/不能”。
+
+**M5-E2**：给定 `x [B, S, D] = [2, 4, 3]` 和 `weight [D, H] = [3, 5]`，推导 `x @ weight` 的输出 shape，指出收缩维度、保留维度和新输出维度。再判断 `x * weight` 是否可广播，并解释它为什么不是同一个计算。
+
+### 模块 5 验收
+
+1. 你能否把两个 shape 右对齐，并逐维应用“相等、其中一个为 1、左侧缺失视为 1”的规则？
+2. 你能否解释 `[B,S,D] + [D]` 与 `[B,S,D] + [S,1]` 中每个维度为什么合法？
+3. 你能否区分 `*` 和 `@`，并推导 `[B,S,D] @ [D,H] -> [B,S,H]`？
+4. 面对真实 matmul 报错时，你能否用输入 shape 找出冲突的两个收缩维度？
 
 <a id="module-6"></a>
 ## 模块 6：dtype 与内存估算
 
-本模块将连接 dtype、每元素字节数、元素总数和理论内存占用，为后续估算模型权重与激活打基础。
+Tensor 的理论数据量由两个因素决定：有多少元素，以及每个元素用多少位。先做与设备无关的纸笔估算，再用 PyTorch 的真实 dtype 验证。理论数据量不包含 Python 对象、Tensor 元数据、分配器对齐、缓存和计算库工作区等额外开销。
+
+### 6.1 从位数计算理论字节数
+
+设 Tensor 有 `N = numel` 个元素，每个元素占 `b` 位：
+
+```text
+理论位数 = N * b
+理论字节数 = N * b / 8
+```
+
+对于每元素位数能整除 8 的常见格式，也可以直接使用“元素数乘每元素字节数”。下面取一个故意为奇数的 `N = 13`：
+
+| 格式 | 每元素位数 | 13 个元素的计算 | 理论字节数 |
+| --- | ---: | --- | ---: |
+| FP32 | 32 | `13 * 32 / 8` | 52 |
+| FP16 | 16 | `13 * 16 / 8` | 26 |
+| BF16 | 16 | `13 * 16 / 8` | 26 |
+| INT8 | 8 | `13 * 8 / 8` | 13 |
+| packed INT4 | 4 | `ceil(13 * 4 / 8)` | 7 |
+
+FP16 和 BF16 都是 16 位，所以理论数据量相同；它们的数值编码、精度和范围并不相同。INT8 每元素一字节。packed INT4 把两个 4 位值打包进一个字节；13 个值需要 52 位，即 6.5 字节，存储必须使用完整字节，所以向上取整为 7 字节。整数计算可以写成：
+
+```python
+def packed_int4_bytes(numel):
+    return (numel * 4 + 7) // 8
+
+print(packed_int4_bytes(12))
+print(packed_int4_bytes(13))
+```
+
+预期输出是 `6` 和 `7`。`//` 是整数向下除法；在分子先加 `7`，实现了除以 8 时的向上取整。
+
+普通 PyTorch Tensor API 没有供本教程直接创建和逐元素观察的常规 instructional INT4 dtype。实际 INT4 量化通常使用打包存储、量化参数和专用 kernel。因此表中的 INT4 是**仅针对打包数据本体的理论估算**，不能写成 `torch.zeros(..., dtype=torch.int4)` 来验证，也不能自动代表某个量化文件或运行时的全部内存。
+
+### 6.2 用 `numel() * element_size()` 验证真实 dtype
+
+`element_size()` 方法返回 Tensor 中单个元素占用的字节数。对普通未打包 PyTorch Tensor，`numel() * element_size()` 给出其数据本体的理论字节数。`torch.zeros(shape, dtype=...)` 创建给定 shape、values 全为 0 的 Tensor；这里 values 不重要，选择 0 是为了让构造确定且容易检查。
+
+**Predict：** 先根据 13 个元素手算下面四行的每元素字节数和总字节数，再运行验证。
+
+```python
+import torch
+
+for dtype in [torch.float32, torch.float16, torch.bfloat16, torch.int8]:
+    tensor = torch.zeros(13, dtype=dtype)
+    print(
+        dtype,
+        "numel=", tensor.numel(),
+        "element_size=", tensor.element_size(),
+        "bytes=", tensor.numel() * tensor.element_size(),
+    )
+```
+
+预期输出为：
+
+```text
+torch.float32 numel= 13 element_size= 4 bytes= 52
+torch.float16 numel= 13 element_size= 2 bytes= 26
+torch.bfloat16 numel= 13 element_size= 2 bytes= 26
+torch.int8 numel= 13 element_size= 1 bytes= 13
+```
+
+这段验证回答的是“这个 Tensor 的元素数据理论上占多少字节”，不是“整个 Python 进程增加了多少内存”。同理，把结果除以 `1024` 得到 KiB，除以 `1024 ** 2` 得到 MiB；不要把十进制 MB 与二进制 MiB 混写。
+
+### 6.3 可选 CUDA：比较理论数据量与分配器指标
+
+本小节只用于有可用 CUDA 的环境。`torch.cuda.is_available()` 守卫保证 CPU-only 学习者看到清晰跳过消息并正常结束。实验不下载模型，只分配一个 `1024 x 1024` 的 FP32 Tensor，其理论数据量是 `4,194,304` 字节，即 4 MiB。
+
+`torch.device("cuda")` 创建一个表示默认 CUDA 设备的设备对象，便于把同一设备明确传给后续 API。`empty_cache()` 释放缓存分配器中当前未被活跃 Tensor 使用的缓存块，但不会释放仍被 Tensor 引用的内存。`torch.cuda.synchronize()` 等待当前设备上已提交的 CUDA 工作完成，使观察点更明确。`reset_peak_memory_stats()` 把当前进程在该设备上的峰值统计重置到当前水平。`memory_allocated()` 统计当前由活跃 Tensor 占用的内存，`memory_reserved()` 统计 PyTorch 缓存分配器向 CUDA 保留的内存，`max_memory_allocated()` 返回重置以来活跃 Tensor 内存的峰值。`torch.empty(shape, dtype=..., device=...)` 在指定设备上分配 Tensor 而不初始化 values；本实验只观察内存，不读取其中的任意值。
+
+```python
+import torch
+
+if not torch.cuda.is_available():
+    print("CUDA 不可用：跳过模块 6 可选显存实验；CPU 主路径已足够完成本模块。")
+else:
+    device = torch.device("cuda")
+    torch.cuda.empty_cache()
+    torch.cuda.synchronize(device)
+
+    before_allocated = torch.cuda.memory_allocated(device)
+    before_reserved = torch.cuda.memory_reserved(device)
+    torch.cuda.reset_peak_memory_stats(device)
+
+    sample = torch.empty((1024, 1024), dtype=torch.float32, device=device)
+    torch.cuda.synchronize(device)
+
+    theoretical_bytes = sample.numel() * sample.element_size()
+    allocated = torch.cuda.memory_allocated(device)
+    reserved = torch.cuda.memory_reserved(device)
+    peak_allocated = torch.cuda.max_memory_allocated(device)
+
+    print("theoretical bytes:", theoretical_bytes)
+    print("allocated bytes:", allocated)
+    print("reserved bytes:", reserved)
+    print("peak allocated bytes:", peak_allocated)
+    print("allocated increase:", allocated - before_allocated)
+    print("reserved increase:", reserved - before_reserved)
+
+    del sample
+    torch.cuda.synchronize(device)
+```
+
+有 CUDA 时，必须记录实际数字而不是预先抄一个固定输出。通常 `allocated increase` 会反映新 Tensor 的数据量，而 `reserved` 可能更大，因为缓存分配器会按块保留内存供后续复用；已有 CUDA 上下文、其他活跃 Tensor、分配粒度和 PyTorch/CUDA 版本也会影响观察值。`peak allocated` 是本进程在重置后达到的活跃分配峰值，不是整张 GPU 的占用，也不是 `nvidia-smi` 中进程总显存的同义词。
+
+因此要区分：
+
+- **理论字节数：** 由 shape、numel 和 dtype 位数决定，只计算目标数据本体。
+- **allocated：** PyTorch 当前活跃 Tensor 由缓存分配器计入的字节数。
+- **reserved：** PyTorch 已向 CUDA 保留、其中可能有暂未被活跃 Tensor 使用的内存。
+- **peak allocated：** 重置峰值统计后，allocated 曾达到的最大值。
+
+### 常见误区
+
+- **把 bit 当 byte：** 32 bit 是 4 byte，因为 1 byte = 8 bit。
+- **对奇数个 INT4 元素直接舍去半字节：** 实际存储必须占完整字节，所以应向上取整；13 个 packed INT4 是 7 字节，不是 6 字节。
+- **假设有普通 `torch.int4` 可直接验证：** INT4 通常依赖打包表示和专用实现，本教程只做数据本体理论估算。
+- **把理论数据量等同于 GPU 进程显存：** 分配器缓存、上下文、kernel 工作区、其他 Tensor 和对齐都可能让运行时指标不同。
+- **认为 reserved 都被当前 Tensor 使用：** reserved 包含缓存分配器保留但当前可能空闲的块，通常不等于 allocated。
+
+### 练习
+
+**M6-E1**：一个 shape 为 `[3, 5, 7]` 的 Tensor 有多少元素？分别计算 FP32、FP16、BF16、INT8 和 packed INT4 的理论字节数。INT4 必须写出向上取整步骤。
+
+**M6-E2**：创建 shape 为 `[2, 3, 4]` 的 `torch.float32`、`torch.float16`、`torch.bfloat16` 和 `torch.int8` Tensor，用 `numel()`、`element_size()` 和乘积验证理论数据量。解释为什么 FP16 与 BF16 字节数相同，却不能据此说它们的数值性质相同。
+
+**M6-E3（可选 CUDA）**：在 CUDA 可用性守卫内，把示例 shape 改成 `[512, 512]`，先手算 FP32 理论字节数，再记录 allocated increase、reserved increase 和 peak allocated。解释至少两个导致运行时指标不等于理论值的原因。CUDA 不可用时，写下跳过原因即可通过本题。
+
+### 模块 6 验收
+
+1. 你能否从 `numel * bits / 8` 推导 FP32、FP16、BF16、INT8 的理论字节数？
+2. 你能否对奇数个 packed INT4 元素正确向上取整，并说明为什么普通 PyTorch dtype 示例不直接包含 INT4？
+3. 你能否使用 `numel() * element_size()` 验证真实 PyTorch dtype 的数据本体字节数？
+4. 你能否区分 theoretical、allocated、reserved 和 peak allocated，并让 CPU-only 路径清晰跳过 CUDA 实验？
 
 <a id="capstone"></a>
 ## 综合任务：走过一次微型语言模型数据流
@@ -595,6 +1098,26 @@ tensor([[101, 102,   0],
 
 **M3-E2 提示：** 先算 `2 * 3 * 4`，再逐个计算候选 shape 的乘积。`unsqueeze` 的目标新维度位于原第 0 维和第 1 维之间。
 
+### 模块 4
+
+**M4-E1 提示：** 连续二维 Tensor 的最后一维 stride 为 1；向下一行要跨过一整行的元素数。转置会交换 shape 和 stride 中对应的两个轴。可以用 `xt[i, j] == x[j, i]` 表达 value 对应关系。
+
+**M4-E2 提示：** 原 shape `[2, 3, 4]` 的连续 stride 是 `(12, 4, 1)`。`permute(2, 0, 1)` 同时按顺序挑选原 shape 和原 stride。比较结果时观察 values、shape 和连续性，但复制或共享不能仅由 values 相等推出。
+
+### 模块 5
+
+**M5-E1 提示：** 给每个较短 shape 在左侧补 1，再从最右侧逐项写出比较。`[2, 4]` 补齐后是 `[1, 2, 4]`，不要把其中的数字自动按业务字母重新排序。
+
+**M5-E2 提示：** `@` 检查左侧最后一维 3 与右侧倒数第二维 3，并用右侧最后一维 5 替换输出中的 `D`。判断 `*` 时改用广播规则，把 `[2, 4, 3]` 与 `[3, 5]` 右对齐。
+
+### 模块 6
+
+**M6-E1 提示：** 先算 `3 * 5 * 7 = 105`。packed INT4 的字节数可用 `(105 * 4 + 7) // 8`，不要把 52.5 直接向下取整。
+
+**M6-E2 提示：** 四个 Tensor 的 `numel` 都是 `2 * 3 * 4`，差异只来自 `element_size()`。内存位数相同只说明数据本体大小相同，不说明指数位、尾数位、精度或范围相同。
+
+**M6-E3 提示：** `[512, 512]` 有 262,144 个元素，FP32 每元素 4 字节。运行时差异常来自分配器保留块、已有活跃分配、CUDA 上下文、对齐或工作区等；CUDA 不可用不是错误路径。
+
 <a id="answers"></a>
 ## 参考答案
 
@@ -617,6 +1140,26 @@ tensor([[101, 102,   0],
 **M3-E1 答案：** `hidden[0].shape` 是 `torch.Size([3, 4])`，因为整数 `0` 选定并消去 `B` 维；`hidden[0:1].shape` 是 `torch.Size([1, 3, 4])`，因为切片保留长度变为 1 的 `B` 维；`hidden[:, 1].shape` 是 `torch.Size([2, 4])`，因为 `:` 保留 `B` 维，而整数 `1` 消去 `S` 维；`hidden[:, 1:2].shape` 是 `torch.Size([2, 1, 4])`，因为两个切片都保留轴，只把 `S` 维长度变为 1。
 
 **M3-E2 答案：** 原 Tensor 有 `2 * 3 * 4 = 24` 个元素。`[6, 4]`、`[4, 6]` 和 `[2, 2, 6]` 的乘积都是 24，因此都兼容；`[5, 5]` 的乘积是 25，因此不兼容。若 `x.shape == torch.Size([2, 3, 4])`，`y = x.unsqueeze(1)` 会在第 1 维插入长度 1，得到 `[2, 1, 3, 4]`；`z = y.squeeze(1)` 只删除该长度为 1 的维度，恢复 `[2, 3, 4]`。两步都不改变元素总数。
+
+### 模块 4
+
+**M4-E1 答案：** `x` 的 values 是 `[[0, 1, 2], [3, 4, 5]]`，shape 是 `[2, 3]`，连续 stride 是 `(3, 1)`，`is_contiguous()` 为 `True`。转置后 values 是 `[[0, 3], [1, 4], [2, 5]]`，shape 是 `[3, 2]`，stride 是 `(1, 3)`，`is_contiguous()` 为 `False`。例如 `x.transpose(0, 1)[2, 1] == x[1, 2] == 5`，因为新第 0、1 维分别来自原第 1、0 维。
+
+**M4-E2 答案：** 原连续 stride 是 `(12, 4, 1)`。`permute(2, 0, 1)` 按“原第 2 维、原第 0 维、原第 1 维”重排，所以 `y.shape == torch.Size([4, 2, 3])`，`y.stride() == (1, 12, 4)`，通常 `y.is_contiguous()` 为 `False`。`y.reshape(24)` 和 `y.contiguous().view(24)` 应得到相同逻辑 values、shape `[24]` 和连续结果；但一次输出不能证明复制路径相同。`reshape` 可能返回 view 或副本，后者明确先请求连续布局再 `view`。
+
+### 模块 5
+
+**M5-E1 答案：** `[3]` 补齐为 `[1, 1, 3]`：与 `[2, 4, 3]` 比较时依次是 `3=3`、`1` 可扩展到 `4`、`1` 可扩展到 `2`，所以合法。`[4, 1]` 补齐为 `[1, 4, 1]`：`1` 扩展到 `3`、`4=4`、`1` 扩展到 `2`，合法。`[2, 1, 3]`：`3=3`、`1` 扩展到 `4`、`2=2`，合法。`[2, 4]` 补齐为 `[1, 2, 4]`：最右侧先遇到 `3` 对 `4`，既不相等也没有 1，所以不合法；无需继续寻找别的对齐方式。
+
+**M5-E2 答案：** `[2, 4, 3] @ [3, 5] -> [2, 4, 5]`。左侧最后一维 `D = 3` 与右侧倒数第二维 `D = 3` 收缩；`B = 2`、`S = 4` 保留；右侧 `H = 5` 成为输出最后一维。对 `x * weight`，右对齐 `[2, 4, 3]` 与 `[1, 3, 5]` 后，最右侧是 `3` 对 `5`，不能广播，所以该具体表达式失败。即使换成可广播 shape，`*` 也只会逐元素相乘，不会执行点积或把 `D` 替换为 `H`。
+
+### 模块 6
+
+**M6-E1 答案：** 元素总数是 `3 * 5 * 7 = 105`。FP32 为 `105 * 32 / 8 = 420` 字节；FP16 为 `105 * 16 / 8 = 210` 字节；BF16 同样为 210 字节；INT8 为 `105 * 8 / 8 = 105` 字节；packed INT4 为 `ceil(105 * 4 / 8) = ceil(52.5) = 53` 字节，也可算 `(105 * 4 + 7) // 8 = 53`。
+
+**M6-E2 答案：** `[2, 3, 4]` 有 24 个元素。`torch.float32` 的 `element_size()` 为 4，总计 96 字节；`torch.float16` 为 2，总计 48 字节；`torch.bfloat16` 为 2，总计 48 字节；`torch.int8` 为 1，总计 24 字节。FP16 与 BF16 都使用 16 位，所以数据本体字节数相同；但两者对指数和有效精度的编码取舍不同，数值范围与舍入特性不能由字节数推出。
+
+**M6-E3 答案：** `[512, 512]` 有 `512 * 512 = 262,144` 个元素，FP32 理论数据量是 `262,144 * 4 = 1,048,576` 字节，即 1 MiB。实际记录值依环境而定，不设固定答案。allocated increase 关注活跃 Tensor 分配，reserved increase 还受缓存分配器按块保留影响，peak allocated 记录重置后的活跃分配峰值；已有分配、分配粒度、上下文、对齐和临时工作区都可能造成差异。CUDA 不可用时，记录守卫打印的跳过消息和 CPU 理论计算即可。
 
 <a id="glossary"></a>
 ## 术语与速查表
