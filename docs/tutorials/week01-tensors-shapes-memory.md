@@ -65,6 +65,8 @@
 例如，看到下面的代码时，不要立刻运行：
 
 ```python
+import torch
+
 x = torch.arange(12).reshape(3, 4)
 print(x.shape)
 print(x[:, 1:3].shape)
@@ -143,7 +145,7 @@ PY
 
 继续学习前，至少应看到：
 
-- `Python:` 后有版本号。
+- `Python:` 后应为 `3.11.x`；如果不是，请返回 [环境配置与双机工作流](../environment.md) 配置推荐版本。
 - `PyTorch:` 后有版本号，而不是“未安装”。
 - `CUDA available:` 为 `True` 或 `False`；两者都可以完成本周教程。
 
