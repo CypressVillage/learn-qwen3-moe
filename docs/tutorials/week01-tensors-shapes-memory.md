@@ -447,7 +447,7 @@ position 1: tensor([102, 202]) shape: (2,)
 
 `reshape(new_shape)` 的用途是把 Tensor 变成元素数兼容的新形状。结果可能与原 Tensor 共享底层存储，也可能在需要时创建副本，因此不要笼统地说它“总是 view”或“总是 copy”。
 
-`view(new_shape)` 也用于返回元素数兼容的新形状，但它要求当前内存布局能直接按该形状解释；后续模块 4 会学习 stride 和 contiguous，并看到不满足布局条件时的例子。在本节连续存储的简单 Tensor 上，`view` 可以成功。
+`view(new_shape)` 也用于返回元素数兼容的新形状，但它要求目标 shape 与当前 size/stride 兼容，能够在不重排数据的情况下共享存储；后续模块 4 会看到不满足该条件的例子。在本节连续存储的简单 Tensor 上，`view` 可以成功，但“非连续”本身并不等于所有 `view` 都必然失败。
 
 ```python
 import torch
@@ -617,7 +617,7 @@ same logical value: 4 4
 
 ### 4.3 亲眼看到非连续 `view` 失败
 
-`view(12)` 想把 Tensor 直接解释成一段连续的一维数据。对上面的 `transposed`，逻辑遍历顺序是 `0, 4, 8, 1, 5, 9, ...`，但它的 stride 不能直接表示这个一维顺序，因此 `view` 会抛出 `RuntimeError`。
+`view(12)` 想在不重排底层数据的前提下，把 Tensor 解释成一维。`view` 是否成功取决于目标 shape 与当前 size/stride 是否兼容；连续布局通常容易满足条件，但非连续 Tensor 并非一律不能 `view`。对上面的 `transposed`，逻辑遍历顺序是 `0, 4, 8, 1, 5, 9, ...`，当前 stride 无法把两个维度直接合并成这一维；若要得到该顺序就必须重排数据，因此这一次 `view(12)` 会抛出 `RuntimeError`。
 
 下面必须保留 `try/except`。代码打印异常对象中**实际错误文本的最后一行**；不同 PyTorch 版本的措辞可能不同，因此不要把教程中的某一句英文当成要背的固定答案。
 
@@ -700,7 +700,7 @@ reordered contiguous: False
 
 - **把 shape 当成存储顺序：** shape 只说明每个逻辑轴的长度；还要看 stride 和连续性，才能描述下标如何映射到底层存储。
 - **认为 `transpose` 或 `permute` 会自动复制并重排数据：** 它们通常返回共享存储、stride 改变的 view。需要连续布局时应显式检查或调用 `contiguous()`。
-- **认为非连续 Tensor 不能参与任何计算：** 很多 PyTorch 运算能直接处理非连续输入；本例失败的是对布局有特定要求的 `view`。
+- **认为非连续就一定不能 `view`：** `view` 检查的是目标 shape 与当前 size/stride 是否兼容。某些非连续 Tensor 仍能做部分 `view`；本例只是不能把转置后的两个维度直接合并成一维。
 - **认为 `reshape` 和 `contiguous().view` 总是同样复制：** 本例 values 相同不代表内部路径永远相同。`reshape` 可能共享也可能复制，`contiguous()` 则明确保证返回连续布局。
 
 ### 练习
@@ -713,7 +713,7 @@ reordered contiguous: False
 
 1. 你能否分别用一句话解释 shape、stride 和 `is_contiguous()` 回答什么问题？
 2. 你能否根据 `(3, 4)` 的连续矩阵推导 stride `(4, 1)`，再推导转置后的 `(1, 4)`？
-3. 你能否保留并解释一次真实的非连续 `view` 报错，再正确使用 `reshape` 或 `contiguous().view(...)`？
+3. 你能否用 shape/stride 不兼容解释这次转置 Tensor 的 `view(12)` 报错，同时说明非连续 Tensor 并非所有 `view` 都必然失败，再正确使用 `reshape` 或 `contiguous().view(...)`？
 4. 你能否解释为什么两种成功路径 values 相同，也不能证明它们总有相同复制行为？
 
 <a id="module-5"></a>
@@ -857,7 +857,7 @@ projection:       [D, H] =    [2, 3]
 output:     [B, S, H] = [2, 3, 3]
 ```
 
-`D` 是收缩维度：每个长度为 2 的隐藏向量与 `projection` 的每一列做点积，`D` 不再出现在输出 shape 中。`B` 和 `S` 是批次维度，被保留；矩阵右侧的 `H = 3` 成为新的最后一维。
+从矩阵乘法角度看，`B` 是 matmul 的 batch 维度；对每个 batch，左侧都可看成一个 `[S, D]` 矩阵，其中 `S` 是矩阵的行维，也对应序列位置。`D` 是收缩的内维度：每个长度为 2 的行向量与 `projection` 的每一列做点积，因而不再出现在输出 shape 中。右侧 `[D, H]` 的 `H = 3` 是列数，并成为输出矩阵 `[S, H]` 的列维。因此整体输出是 `[B, S, H]`：保留 batch 维 `B` 和行/序列维 `S`，产生输出列维 `H`。
 
 **Predict：** 下面的 projection 会把向量 `[a, b]` 变成 `[a, b, a + b]`。据此手算全部输出，再运行。
 
@@ -867,14 +867,16 @@ projection = torch.tensor(
      [0.0, 1.0, 1.0]]
 )
 output = hidden @ projection
+matmul_output = torch.matmul(hidden, projection)
 
 print("projection shape:", tuple(projection.shape))
 print(output)
 print("output shape:", tuple(output.shape))
-print("same as torch.matmul:", torch.equal(output, torch.matmul(hidden, projection)))
+print("same size and values:", torch.equal(output, matmul_output))
+print("same dtype:", output.dtype == matmul_output.dtype)
 ```
 
-`torch.equal(a, b)` 在两个 Tensor 的 shape、dtype 和 values 都相同时返回 `True`。预期输出为：
+`torch.equal(a, b)` 在两个 Tensor 的 size 相同且对应元素值相同时返回 `True`；它不要求 dtype 相同，并且对应位置都是 `NaN` 时仍视为不相等。如果还需要验证 dtype，应像代码最后一行那样单独比较 `.dtype`。预期输出为：
 
 ```text
 projection shape: (2, 3)
@@ -886,7 +888,8 @@ tensor([[[ 0.,  1.,  1.],
          [ 8.,  9., 17.],
          [10., 11., 21.]]])
 output shape: (2, 3, 3)
-same as torch.matmul: True
+same size and values: True
+same dtype: True
 ```
 
 矩阵乘法要求左侧最后一维与右侧倒数第二维相等。下面故意使用 `[4, 3]` 的矩阵，使 `hidden` 的 `D = 2` 与矩阵的输入维 `4` 冲突，并打印实际 `RuntimeError`：
@@ -917,13 +920,13 @@ except RuntimeError as error:
 
 **M5-E1**：对 `x [B, S, D] = [2, 4, 3]`，先右对齐并判断以下 shape 能否与它相加：`[3]`、`[4, 1]`、`[2, 1, 3]`、`[2, 4]`。对每个维度逐项说明相等、长度为 1，或发生冲突；不要只写“能/不能”。
 
-**M5-E2**：给定 `x [B, S, D] = [2, 4, 3]` 和 `weight [D, H] = [3, 5]`，推导 `x @ weight` 的输出 shape，指出收缩维度、保留维度和新输出维度。再判断 `x * weight` 是否可广播，并解释它为什么不是同一个计算。
+**M5-E2**：给定 `x [B, S, D] = [2, 4, 3]` 和 `weight [D, H] = [3, 5]`，推导 `x @ weight` 的输出 shape，并分别指出 matmul batch 维、左矩阵行/序列维、收缩维和输出列维。再判断 `x * weight` 是否可广播，并解释它为什么不是同一个计算。
 
 ### 模块 5 验收
 
 1. 你能否把两个 shape 右对齐，并逐维应用“相等、其中一个为 1、左侧缺失视为 1”的规则？
 2. 你能否解释 `[B,S,D] + [D]` 与 `[B,S,D] + [S,1]` 中每个维度为什么合法？
-3. 你能否区分 `*` 和 `@`，并推导 `[B,S,D] @ [D,H] -> [B,S,H]`？
+3. 你能否区分 `*` 和 `@`，推导 `[B,S,D] @ [D,H] -> [B,S,H]`，并把 `B`、`S`、`D`、`H` 分别解释为 matmul batch、左矩阵行/序列、收缩和输出列维？
 4. 面对真实 matmul 报错时，你能否用输入 shape 找出冲突的两个收缩维度？
 
 <a id="module-6"></a>
@@ -998,7 +1001,7 @@ torch.int8 numel= 13 element_size= 1 bytes= 13
 
 本小节只用于有可用 CUDA 的环境。`torch.cuda.is_available()` 守卫保证 CPU-only 学习者看到清晰跳过消息并正常结束。实验不下载模型，只分配一个 `1024 x 1024` 的 FP32 Tensor，其理论数据量是 `4,194,304` 字节，即 4 MiB。
 
-`torch.device("cuda")` 创建一个表示默认 CUDA 设备的设备对象，便于把同一设备明确传给后续 API。`empty_cache()` 释放缓存分配器中当前未被活跃 Tensor 使用的缓存块，但不会释放仍被 Tensor 引用的内存。`torch.cuda.synchronize()` 等待当前设备上已提交的 CUDA 工作完成，使观察点更明确。`reset_peak_memory_stats()` 把当前进程在该设备上的峰值统计重置到当前水平。`memory_allocated()` 统计当前由活跃 Tensor 占用的内存，`memory_reserved()` 统计 PyTorch 缓存分配器向 CUDA 保留的内存，`max_memory_allocated()` 返回重置以来活跃 Tensor 内存的峰值。`torch.empty(shape, dtype=..., device=...)` 在指定设备上分配 Tensor 而不初始化 values；本实验只观察内存，不读取其中的任意值。
+`torch.device("cuda")` 创建一个表示默认 CUDA 设备的设备对象，便于把同一设备明确传给后续 API。`empty_cache()` 释放缓存分配器中当前未被活跃 Tensor 使用的缓存块，但不会释放仍被 Tensor 引用的内存。`torch.cuda.synchronize()` 等待当前设备上已提交的 CUDA 工作完成，使观察点更明确。`reset_peak_memory_stats()` 把峰值统计重置到调用时的当前 allocator 基线；调用后若尚未增加分配，`max_memory_allocated()` 的基线就是当时的 `memory_allocated()`。`memory_allocated()` 统计当前由活跃 PyTorch Tensor 占用、并由 PyTorch CUDA allocator 计数的内存；`memory_reserved()` 统计该 allocator 已向 CUDA 保留的内存；`max_memory_allocated()` 返回重置以来前者达到的峰值。`torch.empty(shape, dtype=..., device=...)` 在指定设备上分配 Tensor 而不初始化 values；本实验只观察内存，不读取其中的任意值。
 
 ```python
 import torch
@@ -1028,26 +1031,30 @@ else:
     print("peak allocated bytes:", peak_allocated)
     print("allocated increase:", allocated - before_allocated)
     print("reserved increase:", reserved - before_reserved)
+    print("peak allocated increase:", peak_allocated - before_allocated)
 
     del sample
     torch.cuda.synchronize(device)
 ```
 
-有 CUDA 时，必须记录实际数字而不是预先抄一个固定输出。通常 `allocated increase` 会反映新 Tensor 的数据量，而 `reserved` 可能更大，因为缓存分配器会按块保留内存供后续复用；已有 CUDA 上下文、其他活跃 Tensor、分配粒度和 PyTorch/CUDA 版本也会影响观察值。`peak allocated` 是本进程在重置后达到的活跃分配峰值，不是整张 GPU 的占用，也不是 `nvidia-smi` 中进程总显存的同义词。
+有 CUDA 时，必须记录实际数字而不是预先抄一个固定输出。在这个隔离实验中，没有同时创建其他 PyTorch Tensor 时，`allocated increase` 通常应当**精确等于** `theoretical bytes`，因为两者都描述新 Tensor 的数据存储。`peak allocated increase` 也从同一个 `before_allocated` 基线计算；峰值在 reset 时被设为当前基线，分配 `sample` 后它记录相对该基线达到的最大增量。`reserved increase` 则可能与 Tensor 字节数不同，因为缓存分配器按内存块申请、保留和复用内存。
+
+这三个值都是 **PyTorch CUDA allocator 计数器**，不是 CUDA 进程的总 GPU 内存。它们不计入 CUDA context、非 PyTorch 分配以及某些外部库直接进行的分配；`nvidia-smi` 显示的进程 GPU 内存口径更广，因此不能拿它与 `memory_allocated()` 或 `memory_reserved()` 当作同一个指标逐字节比较。
 
 因此要区分：
 
 - **理论字节数：** 由 shape、numel 和 dtype 位数决定，只计算目标数据本体。
 - **allocated：** PyTorch 当前活跃 Tensor 由缓存分配器计入的字节数。
 - **reserved：** PyTorch 已向 CUDA 保留、其中可能有暂未被活跃 Tensor 使用的内存。
-- **peak allocated：** 重置峰值统计后，allocated 曾达到的最大值。
+- **peak allocated：** 峰值重置到当前 allocated 基线后，allocated 曾达到的最大值；减去 `before_allocated` 才得到本实验的峰值增量。
+- **进程总 GPU 内存：** `nvidia-smi` 等工具按更广口径观察的进程占用，可能包含 allocator 计数器之外的 CUDA context 和其他分配。
 
 ### 常见误区
 
 - **把 bit 当 byte：** 32 bit 是 4 byte，因为 1 byte = 8 bit。
 - **对奇数个 INT4 元素直接舍去半字节：** 实际存储必须占完整字节，所以应向上取整；13 个 packed INT4 是 7 字节，不是 6 字节。
 - **假设有普通 `torch.int4` 可直接验证：** INT4 通常依赖打包表示和专用实现，本教程只做数据本体理论估算。
-- **把理论数据量等同于 GPU 进程显存：** 分配器缓存、上下文、kernel 工作区、其他 Tensor 和对齐都可能让运行时指标不同。
+- **混淆 allocator 与进程总显存：** allocated/reserved 只反映 PyTorch CUDA allocator；reserved 还受 allocator 内存块影响。CUDA context 等更广开销可能出现在 `nvidia-smi` 的进程总 GPU 内存中，但不应归因于 allocated/reserved。
 - **认为 reserved 都被当前 Tensor 使用：** reserved 包含缓存分配器保留但当前可能空闲的块，通常不等于 allocated。
 
 ### 练习
@@ -1056,14 +1063,14 @@ else:
 
 **M6-E2**：创建 shape 为 `[2, 3, 4]` 的 `torch.float32`、`torch.float16`、`torch.bfloat16` 和 `torch.int8` Tensor，用 `numel()`、`element_size()` 和乘积验证理论数据量。解释为什么 FP16 与 BF16 字节数相同，却不能据此说它们的数值性质相同。
 
-**M6-E3（可选 CUDA）**：在 CUDA 可用性守卫内，把示例 shape 改成 `[512, 512]`，先手算 FP32 理论字节数，再记录 allocated increase、reserved increase 和 peak allocated。解释至少两个导致运行时指标不等于理论值的原因。CUDA 不可用时，写下跳过原因即可通过本题。
+**M6-E3（可选 CUDA）**：在 CUDA 可用性守卫内，把示例 shape 改成 `[512, 512]`，先手算 FP32 理论字节数，再记录 allocated increase、reserved increase 和 `peak allocated increase = peak allocated - before_allocated`。检查隔离实验中的 allocated increase 是否精确等于 Tensor 理论字节数，解释 reserved increase 为什么可能不同，并说明这些 allocator 计数器为什么不等于 `nvidia-smi` 的进程总 GPU 内存。CUDA 不可用时，写下跳过原因即可通过本题。
 
 ### 模块 6 验收
 
 1. 你能否从 `numel * bits / 8` 推导 FP32、FP16、BF16、INT8 的理论字节数？
 2. 你能否对奇数个 packed INT4 元素正确向上取整，并说明为什么普通 PyTorch dtype 示例不直接包含 INT4？
 3. 你能否使用 `numel() * element_size()` 验证真实 PyTorch dtype 的数据本体字节数？
-4. 你能否区分 theoretical、allocated、reserved 和 peak allocated，并让 CPU-only 路径清晰跳过 CUDA 实验？
+4. 你能否从当前基线计算 peak allocated increase，解释隔离分配时 allocated increase 与理论 Tensor 字节数的关系，并区分 allocator 的 allocated/reserved 与 `nvidia-smi` 的进程总 GPU 内存？
 
 <a id="capstone"></a>
 ## 综合任务：走过一次微型语言模型数据流
@@ -1108,7 +1115,7 @@ else:
 
 **M5-E1 提示：** 给每个较短 shape 在左侧补 1，再从最右侧逐项写出比较。`[2, 4]` 补齐后是 `[1, 2, 4]`，不要把其中的数字自动按业务字母重新排序。
 
-**M5-E2 提示：** `@` 检查左侧最后一维 3 与右侧倒数第二维 3，并用右侧最后一维 5 替换输出中的 `D`。判断 `*` 时改用广播规则，把 `[2, 4, 3]` 与 `[3, 5]` 右对齐。
+**M5-E2 提示：** 把每个 batch 内的左侧看成 `[S, D] = [4, 3]` 矩阵：`B = 2` 是 matmul batch 维，`S = 4` 是左矩阵行/序列维，`D = 3` 与右矩阵倒数第二维收缩，`H = 5` 是输出列维。判断 `*` 时改用广播规则，把 `[2, 4, 3]` 与 `[3, 5]` 右对齐。
 
 ### 模块 6
 
@@ -1116,7 +1123,7 @@ else:
 
 **M6-E2 提示：** 四个 Tensor 的 `numel` 都是 `2 * 3 * 4`，差异只来自 `element_size()`。内存位数相同只说明数据本体大小相同，不说明指数位、尾数位、精度或范围相同。
 
-**M6-E3 提示：** `[512, 512]` 有 262,144 个元素，FP32 每元素 4 字节。运行时差异常来自分配器保留块、已有活跃分配、CUDA 上下文、对齐或工作区等；CUDA 不可用不是错误路径。
+**M6-E3 提示：** `[512, 512]` 有 262,144 个元素，FP32 每元素 4 字节。先在 `reset_peak_memory_stats()` 前记录 `before_allocated`；reset 把峰值设到这个当前基线，所以峰值增量应计算为 `peak_allocated - before_allocated`。隔离分配时 allocated increase 通常精确匹配 Tensor 字节数，reserved increase 可能因 allocator 内存块而不同；CUDA context 属于更广的进程总显存口径，不应归因于 allocated/reserved。
 
 <a id="answers"></a>
 ## 参考答案
@@ -1151,7 +1158,7 @@ else:
 
 **M5-E1 答案：** `[3]` 补齐为 `[1, 1, 3]`：与 `[2, 4, 3]` 比较时依次是 `3=3`、`1` 可扩展到 `4`、`1` 可扩展到 `2`，所以合法。`[4, 1]` 补齐为 `[1, 4, 1]`：`1` 扩展到 `3`、`4=4`、`1` 扩展到 `2`，合法。`[2, 1, 3]`：`3=3`、`1` 扩展到 `4`、`2=2`，合法。`[2, 4]` 补齐为 `[1, 2, 4]`：最右侧先遇到 `3` 对 `4`，既不相等也没有 1，所以不合法；无需继续寻找别的对齐方式。
 
-**M5-E2 答案：** `[2, 4, 3] @ [3, 5] -> [2, 4, 5]`。左侧最后一维 `D = 3` 与右侧倒数第二维 `D = 3` 收缩；`B = 2`、`S = 4` 保留；右侧 `H = 5` 成为输出最后一维。对 `x * weight`，右对齐 `[2, 4, 3]` 与 `[1, 3, 5]` 后，最右侧是 `3` 对 `5`，不能广播，所以该具体表达式失败。即使换成可广播 shape，`*` 也只会逐元素相乘，不会执行点积或把 `D` 替换为 `H`。
+**M5-E2 答案：** `[2, 4, 3] @ [3, 5] -> [2, 4, 5]`。`B = 2` 是 matmul batch 维；在每个 batch 内，左侧 `[S, D] = [4, 3]` 的 `S = 4` 是矩阵行维，也对应序列位置；左侧最后一维 `D = 3` 与右侧倒数第二维 `D = 3` 收缩；右侧 `H = 5` 是列数，并成为输出列维。对 `x * weight`，右对齐 `[2, 4, 3]` 与 `[1, 3, 5]` 后，最右侧是 `3` 对 `5`，不能广播，所以该具体表达式失败。即使换成可广播 shape，`*` 也只会逐元素相乘，不会执行点积或把 `D` 替换为 `H`。
 
 ### 模块 6
 
@@ -1159,7 +1166,7 @@ else:
 
 **M6-E2 答案：** `[2, 3, 4]` 有 24 个元素。`torch.float32` 的 `element_size()` 为 4，总计 96 字节；`torch.float16` 为 2，总计 48 字节；`torch.bfloat16` 为 2，总计 48 字节；`torch.int8` 为 1，总计 24 字节。FP16 与 BF16 都使用 16 位，所以数据本体字节数相同；但两者对指数和有效精度的编码取舍不同，数值范围与舍入特性不能由字节数推出。
 
-**M6-E3 答案：** `[512, 512]` 有 `512 * 512 = 262,144` 个元素，FP32 理论数据量是 `262,144 * 4 = 1,048,576` 字节，即 1 MiB。实际记录值依环境而定，不设固定答案。allocated increase 关注活跃 Tensor 分配，reserved increase 还受缓存分配器按块保留影响，peak allocated 记录重置后的活跃分配峰值；已有分配、分配粒度、上下文、对齐和临时工作区都可能造成差异。CUDA 不可用时，记录守卫打印的跳过消息和 CPU 理论计算即可。
+**M6-E3 答案：** `[512, 512]` 有 `512 * 512 = 262,144` 个元素，FP32 理论数据量是 `262,144 * 4 = 1,048,576` 字节，即 1 MiB。`reset_peak_memory_stats()` 把峰值重置到调用时的 `before_allocated` 基线，所以本实验应报告 `peak_allocated - before_allocated`。在没有并发 PyTorch 分配的隔离实验中，allocated increase 通常精确等于 `1,048,576` 字节，peak allocated increase 也通常达到该值；reserved increase 可能因 allocator 申请或复用内存块而不同。这些数字只属于 PyTorch CUDA allocator，不包含 CUDA context 等更广进程开销；`nvidia-smi` 的进程总 GPU 内存因此可能更大，不能与 allocated/reserved 视为同一指标。CUDA 不可用时，记录守卫打印的跳过消息和 CPU 理论计算即可。
 
 <a id="glossary"></a>
 ## 术语与速查表
