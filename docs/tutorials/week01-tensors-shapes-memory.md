@@ -62,7 +62,7 @@
 2. **Run：再运行。** 执行代码，完整观察输出和报错；不要只看最后一行。
 3. **Explain：后解释。** 对照预测与实际结果，用一句完整的话解释一致或不一致的原因。
 
-例如，看到下面的代码时，不要立刻运行。`import torch` 导入 PyTorch；`torch.arange(12)` 创建包含整数 0 到 11 的一维 Tensor；`reshape(3, 4)` 在元素总数不变的前提下把它组织成 3 行 4 列，并返回 shape 为 `[3, 4]` 的 Tensor。`.shape` 属性返回每个维度的长度。`x[:, 1:3]` 是切片：`:` 保留第 0 维的所有行，`1:3` 取得第 1 维中下标 1 和 2 两列，因此结果 shape 为 `[3, 2]`。
+例如，看到下面的代码时，不要立刻运行。`import torch` 导入 PyTorch；`torch.arange(12)` 创建包含整数 0 到 11 的一维 Tensor；`reshape(3, 4)` 在元素总数不变的前提下把它组织成 3 行 4 列，并返回 shape 为 `torch.Size([3, 4])` 的 Tensor。`.shape` 属性返回每个维度的长度。`x[:, 1:3]` 是切片：`:` 保留第 0 维的所有行，`1:3` 取得第 1 维中下标 1 和 2 两列，因此结果 shape 为 `torch.Size([3, 2])`。
 
 ```python
 import torch
@@ -250,7 +250,7 @@ device: cpu
 - `B` 是 batch size，一次处理多少条序列。这里 `B = 2`。
 - `S` 是 sequence length，每条序列放多少个 token 位置。这里 `S = 3`。
 
-因此，`token_ids.shape == [2, 3]` 应读成：“这一批有 2 条序列，每条有 3 个 token 位置。”数值 `101`、`102` 等只是为了演示而手工写出的编号，不对应真实 tokenizer。后续做语言模型推理时，输入通常正是这样的整数 Tensor；模型会根据每个 token ID 查找对应表示。本周不下载 tokenizer 或模型。
+因此，`token_ids.shape == torch.Size([2, 3])` 应读成：“这一批有 2 条序列，每条有 3 个 token 位置。”数值 `101`、`102` 等只是为了演示而手工写出的编号，不对应真实 tokenizer。后续做语言模型推理时，输入通常正是这样的整数 Tensor；模型会根据每个 token ID 查找对应表示。本周不下载 tokenizer 或模型。
 
 ### 常见误区
 
@@ -366,12 +366,28 @@ hidden ndim= 3 shape= (2, 3, 2) dtype= torch.float32 device= cpu numel= 12
 
 同样，`embedding_weight [V, D] = [4, 2]` 表示 4 个词表条目，每个条目有 2 个表示数。虽然它和某个 `[B, S] = [4, 2]` 的 token ID 表可能拥有相同具体 shape，但两个维度的业务含义完全不同。shape 只记录长度，不自动记录 `B`、`S`、`V`、`D` 这些语义；读代码的人必须根据变量用途补上它们。
 
-dtype 也与语义有关：`token_ids` 使用整数 `torch.int64`，因为它保存编号；`embedding_weight` 和 `hidden` 使用浮点数 `torch.float32`，因为它们保存连续数值表示。device 则说明这些数据在哪里参与计算，本模块仍全部位于 CPU。
+device 说明数据在哪里参与计算，本模块的 Tensor 仍全部位于 CPU。
+
+### 2.4 dtype 会影响数值和内存
+
+dtype 不只是打印信息，它决定三件事：**精度**表示能多细致地区分相近数值，**可表示范围**表示能保存多大或多小的数值，**内存**表示每个元素需要多少字节。通常，位数更多能换来更高精度或更大范围，但每个元素也占更多内存。
+
+| dtype | 代表用途 | 精度与范围 | 每元素内存 |
+| --- | --- | --- | ---: |
+| `torch.bool` | 真/假掩码 | 只表示 `True` 和 `False`，不表示普通整数或小数 | 1 字节 |
+| `torch.int32` | 范围适中的整数 | 精确表示整数，但范围小于 `int64` | 4 字节 |
+| `torch.int64` | token ID、较大整数 | 精确表示整数，范围大于 `int32`；不能表示小数 | 8 字节 |
+| `torch.float16` | 低精度浮点数 | 精度和范围都小于 `float32`，较容易舍入或溢出 | 2 字节 |
+| `torch.bfloat16` | 低精度浮点数 | 精度低于 `float32`，但可表示范围接近 `float32` | 2 字节 |
+| `torch.float32` | 常见权重和隐藏状态 | 在精度、范围和内存之间取得常用平衡 | 4 字节 |
+| `torch.float64` | 需要更高浮点精度的计算 | 精度高于 `float32`，范围也更大，但内存更多 | 8 字节 |
+
+本教程中的 `token_ids` 使用 `torch.int64`，因为它保存必须精确匹配的整数编号；`embedding_weight` 和 `hidden` 使用 `torch.float32`，因为它们保存连续数值表示。这里先建立“dtype 会改变精度、范围和每元素内存”的直觉；模块 6 再用 `numel` 和每元素字节数详细计算整个 Tensor 的理论内存。
 
 ### 常见误区
 
 - **把 rank 和 shape 混为一谈：** `[2, 3, 2]` 的 rank 是 3，shape 是 `[2, 3, 2]`，元素数是 12；这三个答案解决不同问题。
-- **只背具体数字，不写维度含义：** `hidden.shape == [2, 3, 2]` 还不完整；应继续说明它是 `[B, S, D]`，即序列数、token 位置数、表示宽度。
+- **只背具体数字，不写维度含义：** `hidden.shape == torch.Size([2, 3, 2])` 还不完整；应继续说明它是 `[B, S, D]`，即序列数、token 位置数、表示宽度。
 - **认为相同 shape 就代表相同数据：** `[4, 2]` 既可能是 `[V, D]`，也可能是其他语义。shape 相同不等于用途相同。
 
 ### 练习
@@ -452,11 +468,12 @@ print("view(2, 3, 2) shape:", tuple(as_batches.shape), "numel:", as_batches.nume
 
 try:
     flat.reshape(5, 3)
-except RuntimeError:
-    print("reshape failed: 12 elements cannot become shape (5, 3)")
+except RuntimeError as error:
+    print("reshape error:")
+    print(str(error).splitlines()[-1])
 ```
 
-预期输出为；最后一项错误被 `try/except` 捕获，所以整个脚本仍正常结束，退出码为 0：
+预期输出的前几项固定；异常文本可能随 PyTorch 版本略有差异，但最后一行应同时指出目标 shape `[5, 3]` 和输入元素数 12。错误被 `try/except` 捕获，所以整个脚本仍正常结束，退出码为 0：
 
 ```text
 flat shape: (12,) numel: 12
@@ -466,10 +483,13 @@ tensor([[ 0,  1,  2,  3],
         [ 8,  9, 10, 11]])
 shape: (3, 4) numel: 12
 view(2, 3, 2) shape: (2, 3, 2) numel: 12
-reshape failed: 12 elements cannot become shape (5, 3)
+reshape error:
+shape '[5, 3]' is invalid for input of size 12
 ```
 
-`try/except` 是 Python 的错误处理结构：`try` 中故意执行不兼容的 `reshape`，PyTorch 抛出 `RuntimeError` 后进入 `except`，打印稳定的学习提示，而不是让脚本中断。这里要学的不是报错文本，而是报错原因：新旧形状的元素数量不同。
+`try/except` 是 Python 的错误处理结构：`try` 中故意执行不兼容的 `reshape`，PyTorch 抛出 `RuntimeError` 后进入 `except`。`as error` 把异常对象保存到变量 `error`，`str(error).splitlines()[-1]` 再显示实际异常文本的最后一行，而不是用教程自写的固定消息替代它。
+
+阅读这行错误时，先找目标 shape `[5, 3]`，它需要 `5 * 3 = 15` 个元素；再找输入的 size 12，表示原 Tensor 只有 12 个元素。15 与 12 不相等就是失败原因。捕获异常只为了让后续教程继续运行，并不表示这次 `reshape` 成功。
 
 ### 3.3 `unsqueeze` 与 `squeeze`：增加或删除长度为 1 的维度
 
@@ -594,9 +614,9 @@ tensor([[101, 102,   0],
 
 ### 模块 3
 
-**M3-E1 答案：** `hidden[0].shape` 是 `[3, 4]`，因为整数 `0` 选定并消去 `B` 维；`hidden[0:1].shape` 是 `[1, 3, 4]`，因为切片保留长度变为 1 的 `B` 维；`hidden[:, 1].shape` 是 `[2, 4]`，因为 `:` 保留 `B` 维，而整数 `1` 消去 `S` 维；`hidden[:, 1:2].shape` 是 `[2, 1, 4]`，因为两个切片都保留轴，只把 `S` 维长度变为 1。
+**M3-E1 答案：** `hidden[0].shape` 是 `torch.Size([3, 4])`，因为整数 `0` 选定并消去 `B` 维；`hidden[0:1].shape` 是 `torch.Size([1, 3, 4])`，因为切片保留长度变为 1 的 `B` 维；`hidden[:, 1].shape` 是 `torch.Size([2, 4])`，因为 `:` 保留 `B` 维，而整数 `1` 消去 `S` 维；`hidden[:, 1:2].shape` 是 `torch.Size([2, 1, 4])`，因为两个切片都保留轴，只把 `S` 维长度变为 1。
 
-**M3-E2 答案：** 原 Tensor 有 `2 * 3 * 4 = 24` 个元素。`[6, 4]`、`[4, 6]` 和 `[2, 2, 6]` 的乘积都是 24，因此都兼容；`[5, 5]` 的乘积是 25，因此不兼容。若 `x.shape == [2, 3, 4]`，`y = x.unsqueeze(1)` 会在第 1 维插入长度 1，得到 `[2, 1, 3, 4]`；`z = y.squeeze(1)` 只删除该长度为 1 的维度，恢复 `[2, 3, 4]`。两步都不改变元素总数。
+**M3-E2 答案：** 原 Tensor 有 `2 * 3 * 4 = 24` 个元素。`[6, 4]`、`[4, 6]` 和 `[2, 2, 6]` 的乘积都是 24，因此都兼容；`[5, 5]` 的乘积是 25，因此不兼容。若 `x.shape == torch.Size([2, 3, 4])`，`y = x.unsqueeze(1)` 会在第 1 维插入长度 1，得到 `[2, 1, 3, 4]`；`z = y.squeeze(1)` 只删除该长度为 1 的维度，恢复 `[2, 3, 4]`。两步都不改变元素总数。
 
 <a id="glossary"></a>
 ## 术语与速查表
