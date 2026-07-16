@@ -586,7 +586,7 @@ contiguous: True
 
 ### 4.2 `transpose` 改变逻辑视图，不自动重排存储
 
-`transpose(dim0, dim1)` 的用途是交换两个维度，并返回交换后的 Tensor。下面交换矩阵的行维和列维。values 的二维显示会变化，但 `transposed[0, 1]` 仍对应原来的 `matrix[1, 0]`。
+`transpose(dim0, dim1)` 的用途是交换两个维度，并返回交换后的 Tensor。下面交换矩阵的行维和列维。values 的二维显示会变化，但 `transposed[0, 1]` 仍对应原来的 `matrix[1, 0]`。`.item()` 从只含一个元素的 Tensor 中取出对应的 Python 标量值；这里两次调用都应得到 Python 整数 `4`，所以最后一行预期打印 `same logical value: 4 4`。
 
 **Predict：** 先把原矩阵的列写成新矩阵的行。新 shape 是什么？原 stride `(4, 1)` 中的两个数字会怎样交换？
 
