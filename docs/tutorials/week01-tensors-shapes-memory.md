@@ -627,13 +627,14 @@ print("contiguous().view contiguous:", contiguous_view.is_contiguous())
 ```text
 view error type: RuntimeError
 view error last line:
+<此处为随 PyTorch 版本变化的 RuntimeError 最后一行>
 reshape values: tensor([ 0,  4,  8,  1,  5,  9,  2,  6, 10,  3,  7, 11])
 reshape contiguous: True
 contiguous().view values: tensor([ 0,  4,  8,  1,  5,  9,  2,  6, 10,  3,  7, 11])
 contiguous().view contiguous: True
 ```
 
-错误文本因版本而异。两条成功路径保持相同逻辑顺序，但不能据一次 values 相等断言复制行为相同：`reshape` 自行选择共享或复制，`contiguous().view(...)` 明确先请求连续布局。
+尖括号中的行是说明性占位符，不是固定或逐字输出；真实错误文本因版本而异。两条成功路径保持相同逻辑顺序，但不能据一次 values 相等断言复制行为相同：`reshape` 自行选择共享或复制，`contiguous().view(...)` 明确先请求连续布局。
 
 ### 4.4 `permute` 一次重排多个维度
 
