@@ -47,13 +47,11 @@ learn-qwen3-moe/
 └── .gitignore                        # 本地环境、模型权重和输出忽略规则
 ```
 
-当前仓库只包含教学大纲和学习准备文档。代码、练习、测试与模型权重将在正式开始对应周次时逐步创建。
+当前仓库已包含教学大纲、学习准备文档和第一周教程；正式的 `src/`、`tests/` 与模型实现将在对应周次逐步创建。
 
 ## 第一次学习会话
 
-**开始学习：[第一周教程：张量、形状与内存](docs/tutorials/week01-tensors-shapes-memory.md)**
-
-当前可以直接执行以下命令；它们只验证基础环境和学习文档，不下载模型：
+首先按 [环境配置](docs/environment.md) 建立 Python 3.11 虚拟环境并安装 PyTorch，然后执行以下命令验证基础环境和学习文档；这些步骤不会下载模型：
 
 ```bash
 cd /home/zbc/learn-qwen3-moe
@@ -62,7 +60,11 @@ command -v nvidia-smi >/dev/null && nvidia-smi || printf '%s\n' '未检测到 nv
 test -f README.md && test -f docs/environment.md && test -f docs/roadmap.md && test -f docs/progress.md && printf '%s\n' '文档检查通过：请先阅读 docs/environment.md，再查看 docs/roadmap.md 第 1 周。'
 ```
 
-随后按 [环境配置](docs/environment.md) 创建 Python 3.11 虚拟环境，并阅读 [第 1 周路线](docs/roadmap.md#第-1-周张量形状与显存)。本次会话不下载 Qwen3-30B-A3B，也不需要登录 Hugging Face。
+环境准备完成后，再开始第一周教程：
+
+**开始学习：[第一周教程：张量、形状与内存](docs/tutorials/week01-tensors-shapes-memory.md)**
+
+也可以先阅读 [第 1 周路线](docs/roadmap.md#第-1-周张量形状与显存)。本次会话不下载 Qwen3-30B-A3B，也不需要登录 Hugging Face。
 
 ## 学习方法
 
