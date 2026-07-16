@@ -1075,12 +1075,231 @@ else:
 <a id="capstone"></a>
 ## 综合任务：走过一次微型语言模型数据流
 
-综合任务将串联 token ID、embedding、隐藏状态和 logits，要求逐步记录每个 Tensor 的形状、dtype、维度含义与内存估算。
+这个综合任务把前六个模块连成一条最小但完整的数据流：整数 token ID 先从 embedding 表中查出隐藏向量，再通过矩阵乘法投影到输出特征。这里的 `output` 还不是完整语言模型的最终词表 logits，因为本周只练习已经学过的 Tensor 规则，不引入 Attention、MoE 或真实模型权重。
+
+所有数值都固定且可以手算：
+
+```text
+B = 2：一次处理 2 条序列
+S = 3：每条序列有 3 个 token 位置
+V = 5：微型词表有 5 个条目，合法 token ID 为 0-4
+D = 2：每个 token 的 embedding 宽度为 2
+H = 3：投影后的输出宽度为 3
+
+token_ids:        [B, S]
+embedding_weight: [V, D]
+hidden:           [B, S, D]
+projection:       [D, H]
+output:           [B, S, H]
+```
+
+### 第一步：运行代码前完成书面预测
+
+不要先看运行结果。把下面六组预测写在纸上或学习笔记中，每一项都要写出计算过程，不能只写最终数字。
+
+**预测 A：shape、rank 与维度含义**
+
+| Tensor | 预测的具体 shape | rank | 每一维从左到右表示什么 |
+| --- | --- | ---: | --- |
+| `token_ids` |  |  |  |
+| `embedding_weight` |  |  |  |
+| `hidden` |  |  |  |
+| `projection` |  |  |  |
+| `output` |  |  |  |
+
+**预测 B：元素总数**
+
+分别写出五个 Tensor 的 `numel`。必须先写 shape 各维度的乘积，再写结果。
+
+**预测 C：指定 dtype 下的数据本体字节数**
+
+- `token_ids` 使用 `torch.int64`，每元素 8 字节。
+- 其余四个 Tensor 使用 `torch.float32`，每元素 4 字节。
+- 分别计算五个 Tensor 的理论字节数，再计算它们同时存在时的数据本体总字节数。这个总数不包含 Tensor 元数据、Python 对象或分配器开销。
+
+**预测 D：embedding lookup 的 values 与行为**
+
+使用以下固定 values：
+
+```text
+token_ids = [[0, 2, 4],
+             [1, 3, 2]]
+
+embedding_weight = [[ 1,  0],
+                    [ 0,  1],
+                    [ 1,  1],
+                    [ 2, -1],
+                    [-1,  2]]
+```
+
+对每个 token 位置写出查到的 embedding 行。例如，ID `0` 选择 `embedding_weight` 的第 0 行。然后完整写出 `hidden` 的 12 个 values，并用一句话解释为什么输入 `[B, S]` 查表后得到 `[B, S, D]`，而不是 `[V, D]`。
+
+**预测 E：matmul 收缩与 output values**
+
+投影矩阵固定为：
+
+```text
+projection = [[1, 0, 1],
+              [0, 1, 1]]
+```
+
+先在符号形状 `[B, S, D] @ [D, H]` 中标出：
+
+- 哪两个 `D` 必须相等并被收缩。
+- 哪些输入维度保留到输出。
+- 哪个新维度由投影矩阵产生。
+
+再观察 projection 的三列，推导任意隐藏向量 `[a, b]` 会变成什么，并据此完整手算 `output` 的 18 个 values。
+
+**预测 F：检查清单**
+
+运行前确认你的笔记已经包含：五个具体 shape、五组维度含义、五个 `numel`、五个字节数及其总和、完整 `hidden`、完整 `output`，以及一段 embedding lookup 和 matmul contraction 的口头解释稿。缺少任意一项时，先补完再运行。
+
+### 第二步：运行确定性的 CPU 验证代码
+
+下面的代码不使用随机数、不下载模型，也不要求 CUDA。`embedding_weight[token_ids]` 使用 `token_ids` 中的每个整数作为第 0 维行下标；每次选择一行长度为 `D` 的向量，因此结果在原 `[B, S]` 后增加 `D` 维。代码还用断言验证 shape、dtype、device、元素数、查表对应关系和投影对应关系；任一关键事实不成立时，脚本会直接报错，而不是只打印一个看似合理的结果。
+
+```python
+import torch
+
+B, S, V, D, H = 2, 3, 5, 2, 3
+
+token_ids = torch.tensor(
+    [[0, 2, 4],
+     [1, 3, 2]],
+    dtype=torch.int64,
+)
+embedding_weight = torch.tensor(
+    [[1.0, 0.0],
+     [0.0, 1.0],
+     [1.0, 1.0],
+     [2.0, -1.0],
+     [-1.0, 2.0]],
+    dtype=torch.float32,
+)
+projection = torch.tensor(
+    [[1.0, 0.0, 1.0],
+     [0.0, 1.0, 1.0]],
+    dtype=torch.float32,
+)
+
+hidden = embedding_weight[token_ids]
+output = hidden @ projection
+
+tensors = {
+    "token_ids": token_ids,
+    "embedding_weight": embedding_weight,
+    "hidden": hidden,
+    "projection": projection,
+    "output": output,
+}
+
+expected_shapes = {
+    "token_ids": (B, S),
+    "embedding_weight": (V, D),
+    "hidden": (B, S, D),
+    "projection": (D, H),
+    "output": (B, S, H),
+}
+expected_numels = {
+    "token_ids": B * S,
+    "embedding_weight": V * D,
+    "hidden": B * S * D,
+    "projection": D * H,
+    "output": B * S * H,
+}
+expected_bytes = {
+    "token_ids": expected_numels["token_ids"] * 8,
+    "embedding_weight": expected_numels["embedding_weight"] * 4,
+    "hidden": expected_numels["hidden"] * 4,
+    "projection": expected_numels["projection"] * 4,
+    "output": expected_numels["output"] * 4,
+}
+
+total_data_bytes = 0
+for name, tensor in tensors.items():
+    data_bytes = tensor.numel() * tensor.element_size()
+    total_data_bytes += data_bytes
+    print(
+        name,
+        "shape=", tuple(tensor.shape),
+        "dtype=", tensor.dtype,
+        "device=", tensor.device,
+        "numel=", tensor.numel(),
+        "bytes=", data_bytes,
+    )
+    assert tuple(tensor.shape) == expected_shapes[name]
+    assert tensor.numel() == expected_numels[name]
+    assert data_bytes == expected_bytes[name]
+    assert tensor.device.type == "cpu"
+
+assert token_ids.dtype == torch.int64
+assert all(
+    tensor.dtype == torch.float32
+    for name, tensor in tensors.items()
+    if name != "token_ids"
+)
+assert torch.equal(hidden[0, 1], embedding_weight[token_ids[0, 1]])
+assert torch.equal(output[..., 0], hidden[..., 0])
+assert torch.equal(output[..., 1], hidden[..., 1])
+assert torch.equal(output[..., 2], hidden[..., 0] + hidden[..., 1])
+
+print("hidden:")
+print(hidden)
+print("output:")
+print(output)
+print("total tensor data bytes:", total_data_bytes)
+print("all checks passed")
+```
+
+### 第三步：对照观察并口述数据流
+
+运行后逐行对照你的预测，不要只检查最后的 `all checks passed`：
+
+- shape 或 `numel` 不一致时，回到对应符号维度重新相乘。
+- `hidden` 的某个向量不一致时，用该位置的 token ID 回到 `embedding_weight` 找同编号行。
+- `output` 不一致时，把对应 `[a, b]` 分别与 projection 的三列做点积。
+- 字节数不一致时，先确认 `numel`，再确认 `element_size()`；不要把 bit 和 byte 混用。
+
+最后合上代码和运行输出，用自己的话完整解释：`token_ids [B,S]` 如何选择 `embedding_weight [V,D]` 的行得到 `hidden [B,S,D]`，以及 `hidden [B,S,D] @ projection [D,H]` 如何收缩 `D` 并得到 `output [B,S,H]`。能够不看答案讲清这一段，才算完成综合任务。
 
 <a id="acceptance"></a>
 ## 最终验收
 
-验收将检查你是否能脱离运行结果预测形状、解释关键属性、判断广播与矩阵乘法，并完成小 Tensor 的内存手算。
+先独立作答，再运行必要的小实验。完整评估答案统一放在文末“参考答案”的对应编号下；本阶段保留稳定答案位置，后续 Task 5 再补全提示与推理过程。
+
+### A. 概念题
+
+每题用 2-4 句完整的话回答；需要举例时优先沿用本教程的小 Tensor。
+
+1. **C1（rank 与 shape）**：一个 Tensor 的 shape 是 `[2, 3, 4]`。它的 rank 是多少？shape 和 rank 分别回答什么问题？为什么不能因为其中有数字 4 就说它是 rank 4？
+2. **C2（dtype 与 device）**：`dtype` 和 `device` 分别描述 Tensor 的什么属性？为什么两个 shape 都是 `[2, 3]` 的 Tensor，仍可能因为 dtype 或 device 不同而不能直接完成预期计算？
+3. **C3（numel）**：如何只根据 shape 计算 `numel`？索引、切片或 `reshape` 后，哪些操作可能改变结果的 `numel`，哪些形状变换必须保持 `numel` 不变？
+4. **C4（reshape 约束）**：一个 shape 为 `[2, 3, 4]` 的 Tensor 为什么可以 `reshape(6, 4)`，却不能 `reshape(5, 5)`？请写出判断步骤，而不是只写“元素数不匹配”。
+5. **C5（view/copy nuance）**：为什么“`reshape` 总是 view”和“`reshape` 总是 copy”都不准确？`view` 对当前 size/stride 有什么额外要求？
+6. **C6（stride 与 contiguous）**：shape、stride 和 `is_contiguous()` 分别说明什么？为什么 `transpose` 后 values 仍可正确索引，但 Tensor 可能变成 non-contiguous？
+7. **C7（broadcasting）**：广播为什么从尾部维度开始比较？逐项说明一对维度满足哪些条件时兼容，并解释逻辑扩展为什么不等于先手工复制出完整大 Tensor。
+8. **C8（matmul contraction）**：在 `[B,S,D] @ [D,H] -> [B,S,H]` 中，哪个维度被收缩，哪些维度被保留，哪个维度由右侧矩阵产生？这与逐元素 `*` 有什么根本区别？
+9. **C9（INT4 packing）**：为什么 13 个 packed INT4 值需要 7 字节而不是 6 字节或 6.5 字节？为什么不能假设存在普通 `torch.int4` Tensor 来直接验证这个估算？
+10. **C10（理论与观测显存）**：理论 Tensor 数据字节数、PyTorch CUDA 的 `memory_allocated()`、`memory_reserved()`、峰值 allocated 和 `nvidia-smi` 进程总 GPU 内存为什么可能不同？回答时至少指出两个额外开销或统计口径差异。
+
+### B. 形状推导题
+
+每题都要写出中间 shape、维度含义和使用的规则。只写最终 shape 不计完整得分。
+
+1. **S1（索引）**：给定 `hidden [B,S,D] = [2,3,4]`，推导 `hidden[1]`、`hidden[:, 1]` 和 `hidden[0:1, 1:3]` 的 shape。指出每个整数索引消去了哪个轴，每个切片保留了哪个轴。
+2. **S2（reshape）**：给定 `x [B,S,D] = [2,3,4]`，先把它 reshape 为 `[B*S,D]`，再恢复为 `[B,S,D]`。写出两个具体目标 shape、每一步的元素数检查，以及展平后第 0 维代表什么。
+3. **S3（增加维度与广播）**：给定 `scores [B,S] = [2,3]`，执行 `scores.unsqueeze(-1)` 后与 `feature_bias [D] = [4]` 相加。推导两个操作数右对齐后的 shape 和结果 shape，并说明新增的长度 1 维怎样扩展。
+4. **S4（位置广播）**：给定 `hidden [B,S,D] = [2,3,4]` 和 `position_offset [S,1] = [3,1]`。推导 `hidden + position_offset` 的结果 shape，并从右向左解释 `D`、`S`、`B` 三个位置为什么都兼容。
+5. **S5（批量投影）**：给定 `hidden [B,S,D] = [2,3,4]` 和 `projection [D,H] = [4,5]`。推导 `hidden @ projection` 的输出 shape，标出 matmul batch 维、左矩阵行/序列维、收缩维和输出列维；再说明为什么不需要先把 `[B,S,D]` reshape 成二维才能使用 `torch.matmul`。
+
+### C. 评分与通过标准
+
+- **概念题通过：** 至少答对 8/10；答案必须解释原因，只有术语或最终数字不算完整正确。
+- **形状题通过：** 至少答对 4/5；每题必须展示中间 shape、维度含义和规则。
+- **综合任务通过：** 不看代码、运行输出或参考答案，能够完整口述 token ID 查表、hidden 形成、投影收缩和输出形成的全过程，并解释各 Tensor 的 shape、`numel` 与指定 dtype 字节数。
+- **CUDA 可选：** 没有 CUDA 不影响通过；可选显存实验不计入概念题、形状题或综合任务分数。
+- **最终完成：** 三项必修标准必须同时满足。若某项未通过，回到对应模块重做 Predict-Run-Explain，再用同一稳定编号复测。
 
 <a id="hints"></a>
 ## 提示
@@ -1167,6 +1386,14 @@ else:
 **M6-E2 答案：** `[2, 3, 4]` 有 24 个元素。`torch.float32` 的 `element_size()` 为 4，总计 96 字节；`torch.float16` 为 2，总计 48 字节；`torch.bfloat16` 为 2，总计 48 字节；`torch.int8` 为 1，总计 24 字节。FP16 与 BF16 都使用 16 位，所以数据本体字节数相同；但两者对指数和有效精度的编码取舍不同，数值范围与舍入特性不能由字节数推出。
 
 **M6-E3 答案：** `[512, 512]` 有 `512 * 512 = 262,144` 个元素，FP32 理论数据量是 `262,144 * 4 = 1,048,576` 字节，即 1 MiB。`reset_peak_memory_stats()` 把峰值重置到调用时的 `before_allocated` 基线，所以本实验应报告 `peak_allocated - before_allocated`。在没有并发 PyTorch 分配的隔离实验中，allocated increase 通常精确等于 `1,048,576` 字节，peak allocated increase 也通常达到该值；reserved increase 可能因 allocator 申请或复用内存块而不同。这些数字只属于 PyTorch CUDA allocator，不包含 CUDA context 等更广进程开销；`nvidia-smi` 的进程总 GPU 内存因此可能更大，不能与 allocated/reserved 视为同一指标。CUDA 不可用时，记录守卫打印的跳过消息和 CPU 理论计算即可。
+
+### 综合任务与最终验收答案位置
+
+**综合任务答案位置：** Task 5 将在这里给出五个 Tensor 的 shape、维度语义、`numel`、指定 dtype 字节数、完整查表结果、完整投影结果和口述要点。当前先以综合任务中的确定性 CPU 代码核对你自己的书面预测。
+
+**C1-C10 答案位置：** Task 5 将按现有稳定 ID 逐题给出概念判断与理由；本阶段不提前展开最终答案。
+
+**S1-S5 答案位置：** Task 5 将按现有稳定 ID 逐题给出中间 shape、所用规则和最终推导；本阶段不提前展开最终答案。
 
 <a id="glossary"></a>
 ## 术语与速查表
