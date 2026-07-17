@@ -148,6 +148,8 @@ def test_cuda_unavailable_is_skipped_and_not_a_failure():
     assert report["ok"] is True
     assert report["status"] == "SKIPPED"
     assert report["available"] is False
+    assert report["torch_version"] == "2.7.1+cu128"
+    assert report["cuda_runtime"] == "12.8"
     assert "CUDA" in report["summary"]
 
 
@@ -158,7 +160,19 @@ def test_cuda_availability_query_failure_reports_unknown_availability():
 
     assert report["status"] == "FAIL"
     assert report["available"] is None
+    assert report["torch_version"] == "2.7.1+cu128"
+    assert report["cuda_runtime"] == "12.8"
     assert "RuntimeError: availability query exploded" in report["summary"]
+
+
+def test_cuda_unavailable_represents_cpu_only_runtime():
+    torch = FakeTorch(cuda=FakeCuda())
+    torch.version = SimpleNamespace(cuda=None)
+
+    report = check_cuda(torch)
+
+    assert report["status"] == "SKIPPED"
+    assert report["cuda_runtime"] == "None"
 
 
 def test_importing_script_has_no_output_or_torch_loading(capsys, monkeypatch):

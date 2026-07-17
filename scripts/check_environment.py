@@ -48,7 +48,12 @@ def check_cpu(torch_module):
 
 def check_cuda(torch_module):
     available = None
+    torch_version = "unknown"
+    cuda_runtime = "unknown"
     try:
+        torch_version = str(getattr(torch_module, "__version__", None))
+        version_info = getattr(torch_module, "version", None)
+        cuda_runtime = str(getattr(version_info, "cuda", None))
         available = torch_module.cuda.is_available()
         if not available:
             return {
@@ -56,7 +61,12 @@ def check_cuda(torch_module):
                 "status": "SKIPPED",
                 "ok": True,
                 "available": False,
-                "summary": "CUDA is unavailable; CPU-only execution is supported.",
+                "torch_version": torch_version,
+                "cuda_runtime": cuda_runtime,
+                "summary": (
+                    f"CUDA is unavailable; PyTorch {torch_version}, CUDA runtime "
+                    f"{cuda_runtime}; CPU-only execution is supported."
+                ),
             }
 
         gpu_name = torch_module.cuda.get_device_name(0)
@@ -67,8 +77,6 @@ def check_cuda(torch_module):
             [1.0, 2.0, 3.0], dtype=torch_module.float32, device="cuda"
         )
         result = (values * values).sum().item()
-        torch_version = str(torch_module.__version__)
-        cuda_runtime = str(torch_module.version.cuda)
         memory_gib = f"{total_memory / 1024**3:.2f} GiB"
         capability_text = f"{capability[0]}.{capability[1]}"
 
@@ -97,6 +105,8 @@ def check_cuda(torch_module):
             "status": "FAIL",
             "ok": False,
             "available": available,
+            "torch_version": torch_version,
+            "cuda_runtime": cuda_runtime,
             "summary": (
                 f"{type(exc).__name__}: {exc}. See docs/environment.md for CUDA "
                 "troubleshooting guidance."
