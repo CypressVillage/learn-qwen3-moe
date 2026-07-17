@@ -83,49 +83,37 @@ print(x[:, 1:3].shape)
 <a id="environment-check"></a>
 ## 开始前的环境检查
 
-本节只检查环境，不重复安装步骤。如果 Python、虚拟环境或 PyTorch 尚未配置，请按照 [环境配置与双机工作流](../environment.md) 完成设置后再回来。
+本节使用仓库的权威 uv 工作流，不手工激活 `.venv`，也不调用系统 Python。如果尚未安装项目支持的 uv，请先按照 [环境配置与双机工作流](../environment.md#安装-uv) 安装 uv 0.11.28，再回到仓库根目录继续。
 
-### 1. 激活项目环境
+### 1. 检查 uv 并同步锁定环境
 
-若项目使用 `.venv`：
-
-```bash
-source .venv/bin/activate
-```
-
-### 2. 打印版本与 CUDA 状态
-
-运行下面的检查。它会打印 Python 版本、PyTorch 版本和 CUDA 可用性；CPU-only PyTorch 或当前没有可用 CUDA 时，脚本会正常结束，不会因为访问 GPU 名称而失败。
+先确认 uv 版本，再按锁文件同步 Python 3.11.15 和项目依赖：
 
 ```bash
-python - <<'PY'
-import platform
-
-print("Python:", platform.python_version())
-
-try:
-    import torch
-except ModuleNotFoundError:
-    print("PyTorch: 未安装")
-    print("请按 docs/environment.md 配置环境后重新检查。")
-else:
-    print("PyTorch:", torch.__version__)
-    print("PyTorch CUDA runtime:", torch.version.cuda)
-    cuda_available = torch.cuda.is_available()
-    print("CUDA available:", cuda_available)
-    if cuda_available:
-        print("CUDA device:", torch.cuda.get_device_name(0))
-PY
+uv --version
+uv sync --locked --python 3.11.15
 ```
 
-继续前应看到推荐的 Python 3.11、PyTorch 版本号，以及值为 `True` 或 `False` 的 CUDA 状态。`False` 不阻塞本周学习。
+`uv --version` 应以 `uv 0.11.28` 开头；`pyproject.toml` 也会拒绝其他 uv 版本。不要删除 `--locked`，否则初学时可能意外改动锁文件。
+
+### 2. 运行权威环境检查器
+
+检查器会报告 Python、PyTorch、CPU 路径和 CUDA 状态：
+
+```bash
+uv run python scripts/check_environment.py
+```
+
+继续前应看到总体 `[PASS] 环境检查 / Environment check`。CPU-only 机器上的 `[SKIPPED] CUDA` 是正常成功状态，不阻塞本周学习；CUDA 可用时检查器会额外运行 GPU Tensor 冒烟测试。
+
+后续标为 `python` 的代码块是需要阅读、预测和运行的 Python 源码，不应在代码块内部添加 `uv run`。把代码保存为文件时，从仓库根目录使用 `uv run python <文件路径>`，确保导入的是项目锁定环境，而不是系统 Python。
 
 ### 3. 运行 CPU 必做冒烟测试
 
 先预测 shape、元素数和设备。`numel()` 返回元素总数；`.device` 返回所在设备。未指定设备时这里应为 CPU。
 
 ```bash
-python - <<'PY'
+uv run python - <<'PY'
 import torch
 
 x = torch.arange(6).reshape(2, 3)
@@ -143,7 +131,7 @@ PY
 `device="cuda"` 会直接在默认 CUDA 设备创建 Tensor；守卫使 CPU-only 环境安全跳过：
 
 ```bash
-python - <<'PY'
+uv run python - <<'PY'
 import torch
 
 if torch.cuda.is_available():
