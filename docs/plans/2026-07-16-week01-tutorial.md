@@ -250,21 +250,13 @@ git commit -m "docs: complete week one tutorial references"
 
 **Step 1: Add the README entry**
 
-Add a prominent link near the first-learning-session section:
-
-```markdown
-开始学习：[第一周教程：张量、形状与内存](docs/tutorials/week01-tensors-shapes-memory.md)
-```
+Add a prominent link near the first-learning-session section. Prefix it with `开始学习：`, use link text `第一周教程：张量、形状与内存`, and target `docs/tutorials/week01-tensors-shapes-memory.md`.
 
 Do not claim later-week tutorials exist.
 
 **Step 2: Add the roadmap entry**
 
-Under `## 第 1 周：张量、形状与显存`, add:
-
-```markdown
-完整教程：[第一周教程：张量、形状与内存](tutorials/week01-tensors-shapes-memory.md)
-```
+Under `## 第 1 周：张量、形状与显存`, add a link prefixed with `完整教程：`. Use link text `第一周教程：张量、形状与内存` and target `tutorials/week01-tensors-shapes-memory.md`.
 
 **Step 3: Verify links resolve**
 
