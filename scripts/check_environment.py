@@ -40,8 +40,10 @@ def check_cpu(torch_module):
 
 
 def check_cuda(torch_module):
+    available = None
     try:
-        if not torch_module.cuda.is_available():
+        available = torch_module.cuda.is_available()
+        if not available:
             return {
                 "name": "CUDA",
                 "status": "SKIPPED",
@@ -87,7 +89,7 @@ def check_cuda(torch_module):
             "name": "CUDA",
             "status": "FAIL",
             "ok": False,
-            "available": True,
+            "available": available,
             "summary": (
                 f"{type(exc).__name__}: {exc}. See docs/environment.md for CUDA "
                 "troubleshooting guidance."

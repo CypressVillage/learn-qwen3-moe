@@ -1,7 +1,10 @@
 import importlib
 import importlib.util
+import json
 from pathlib import Path
 import runpy
+import subprocess
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -39,6 +42,8 @@ class FakeCuda:
         self.failure = failure
 
     def is_available(self):
+        if self.failure == "availability":
+            raise RuntimeError("availability query exploded")
         return self.available
 
     def get_device_name(self, index):
@@ -102,6 +107,30 @@ def test_cpu_check_runs_a_deterministic_tensor_operation():
     assert torch.tensor_calls == [([1.0, 2.0, 3.0], "float32", "cpu")]
 
 
+def test_real_torch_cpu_check_passes_without_dependency_warning():
+    code = f"""
+import json
+import runpy
+import torch
+
+checker = runpy.run_path({str(SCRIPT_PATH)!r}, run_name="integration_check")
+print(json.dumps(checker["check_cpu"](torch)))
+"""
+
+    completed = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=False
+    )
+
+    assert completed.returncode == 0
+    report = json.loads(completed.stdout)
+    assert report["name"] == "PyTorch CPU"
+    assert report["status"] == "PASS"
+    assert report["ok"] is True
+    assert report["result"] == 14.0
+    assert "Deterministic CPU tensor result: 14.0" in report["summary"]
+    assert completed.stderr == ""
+
+
 def test_cuda_unavailable_is_skipped_and_not_a_failure():
     torch = FakeTorch(cuda=FakeCuda())
 
@@ -111,6 +140,16 @@ def test_cuda_unavailable_is_skipped_and_not_a_failure():
     assert report["status"] == "SKIPPED"
     assert report["available"] is False
     assert "CUDA" in report["summary"]
+
+
+def test_cuda_availability_query_failure_reports_unknown_availability():
+    torch = FakeTorch(cuda=FakeCuda(failure="availability"))
+
+    report = check_cuda(torch)
+
+    assert report["status"] == "FAIL"
+    assert report["available"] is None
+    assert "RuntimeError: availability query exploded" in report["summary"]
 
 
 def test_importing_script_has_no_output_or_torch_loading(capsys, monkeypatch):
