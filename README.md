@@ -47,20 +47,22 @@ learn-qwen3-moe/
 └── .gitignore                        # 本地环境、模型权重和输出忽略规则
 ```
 
-当前仓库已包含教学大纲、学习准备文档和第一周教程；正式的 `src/`、`tests/` 与模型实现将在对应周次逐步创建。
+当前仓库已包含教学大纲、学习准备文档、第一周教程和可复现的 PyTorch 环境；模型实现将在对应周次逐步创建。
 
-## 第一次学习会话
+## 快速开始
 
-首先按 [环境配置](docs/environment.md) 建立 Python 3.11 虚拟环境并安装 PyTorch，然后执行以下命令验证基础环境和学习文档；这些步骤不会下载模型：
+安装 `uv` 后，在每次 clone 或 pull 后从仓库根目录执行：
 
 ```bash
-cd /home/zbc/learn-qwen3-moe
-python3 --version
-command -v nvidia-smi >/dev/null && nvidia-smi || printf '%s\n' '未检测到 nvidia-smi；可以先使用 CPU 阅读和学习。'
-test -f README.md && test -f docs/environment.md && test -f docs/roadmap.md && test -f docs/progress.md && printf '%s\n' '文档检查通过：请先阅读 docs/environment.md，再查看 docs/roadmap.md 第 1 周。'
+uv python install 3.11.15
+uv sync --locked --python 3.11.15
+uv run python scripts/check_environment.py
+uv run pytest
 ```
 
-环境准备完成后，再开始第一周教程：
+`pyproject.toml` 是手工维护的依赖来源，`uv.lock` 是精确锁文件，`requirements.txt` 只是为传统工具生成的兼容导出，绝不手工编辑。当前锁定环境为 Python 3.11.15、PyTorch 2.7.1（Linux wheel 报告 `2.7.1+cu126`）、NumPy 2.2.6 和 CUDA runtime 12.6。完整的驱动要求、代理示例、依赖更新流程和 CPU/GPU 排查见 [环境配置](docs/environment.md)。这些步骤不会下载模型。
+
+环境检查通过后开始第一周教程：
 
 **开始学习：[第一周教程：张量、形状与内存](docs/tutorials/week01-tensors-shapes-memory.md)**
 

@@ -1,30 +1,31 @@
 # 环境配置与双机工作流
 
-## 原则
+## 项目标准环境
 
-- 推荐本地使用 WSL2 Ubuntu 22.04/24.04 或原生 Linux；服务器使用常见的 Ubuntu LTS。
-- 两台机器都推荐使用 Python 3.11 独立虚拟环境；本文用 `uv` 获取指定版本，避免依赖发行版默认仓库是否提供 `python3.11` 包。
-- 先验证 Python、PyTorch 和小测试，不在初始配置阶段下载任何模型。
-- PyTorch 安装命令应以 [PyTorch 官方安装选择器](https://pytorch.org/get-started/locally/) 当前给出的命令为准，不盲目复制过期 CUDA wheel 地址。
-- NVIDIA 驱动由宿主机/服务器管理员维护；通常不需要为了使用 PyTorch wheel 单独安装完整 CUDA Toolkit。
+RTX 4060 Laptop、A10 服务器和 CPU 学习环境使用同一套项目依赖：
 
-## 本地：WSL2 或 Linux
+| 组件 | 锁定版本 |
+| --- | --- |
+| Python | 3.11.15 |
+| PyTorch | 2.7.1；Linux wheel 运行时报告 `2.7.1+cu126` |
+| NumPy | 2.2.6 |
+| CUDA runtime | 12.6，由 PyTorch wheel 依赖提供 |
 
-### WSL2 前提
+NumPy 是显式运行时依赖，用于 PyTorch/NumPy 数据互操作，并避免缺少 NumPy 时的运行期警告。它不表示项目开始依赖 Transformers；Transformers、Accelerate、量化库和模型下载工具仍不属于当前环境。
 
-在 Windows PowerShell 中确认 WSL 已安装并更新：
+## 依赖文件职责
 
-```powershell
-wsl --status
-wsl --update
-wsl -l -v
-```
+- `pyproject.toml`：唯一手工维护的项目依赖来源。增加、删除或修改直接依赖时只编辑此文件。
+- `uv.lock`：`uv` 解析出的精确锁文件，供可复现安装使用，提交到 Git。
+- `requirements.txt`：从锁文件生成的无开发依赖兼容导出，供仍要求 requirements 格式的工具使用。绝不手工编辑。
 
-建议把仓库放在 WSL Linux 文件系统（例如 `/home/<user>/learn-qwen3-moe`），而不是 `/mnt/c/...`，以减少大量小文件和测试时的文件系统开销。WSL2 使用 Windows NVIDIA 驱动透传 GPU，不要在 WSL 中重复安装 Windows 显卡驱动。
+日常安装必须使用 `--locked`。如果 `pyproject.toml` 与 `uv.lock` 不一致，命令应失败而不是悄悄改锁文件。
 
-### Linux 基础工具与 Python 3.11
+## 安装 uv
 
-Ubuntu/WSL2 中执行：
+推荐 WSL2 Ubuntu 或原生 Linux。WSL2 仓库宜放在 `/home/<user>/...`，不要放在 `/mnt/c/...`；GPU 使用 Windows NVIDIA 驱动透传，不要在 WSL 内重复安装 Windows 驱动。
+
+Ubuntu/WSL2 可先安装基础工具，再按 uv 官方安装方式安装：
 
 ```bash
 sudo apt update
@@ -32,255 +33,154 @@ sudo apt install -y ca-certificates curl git
 curl -LsSf https://astral.sh/uv/install.sh | sh
 source "$HOME/.local/bin/env"
 uv --version
-uv python install 3.11
 ```
 
-`uv` 把项目所需的 Python 与系统 Python 分开，因此同一流程适用于默认 Python 不同的 Ubuntu 22.04 和 24.04。执行网络脚本前可先在浏览器查看 `https://astral.sh/uv/install.sh`；受管理设备应遵循管理员批准的安装方式。如果系统已经提供可用的 Python 3.11，也可跳过 `uv python install` 并使用该解释器。不要替换系统 `/usr/bin/python3`。
+执行网络脚本前可查看 `https://astral.sh/uv/install.sh`。受管理服务器应使用管理员批准的安装方式。不要替换系统 `/usr/bin/python3`，也不需要手工创建或激活 `.venv`；`uv sync` 会管理项目环境。
 
-### 创建虚拟环境
+## clone 或 pull 后的标准命令
 
-在仓库根目录执行：
+在 RTX 4060、A10 和 CPU 机器上都执行同一组命令：
 
 ```bash
-cd /home/zbc/learn-qwen3-moe
-uv venv --seed --python 3.11 .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python --version
-python -m pip --version
+uv python install 3.11.15
+uv sync --locked --python 3.11.15
+uv run python scripts/check_environment.py
+uv run pytest
 ```
 
-预期 `python --version` 显示 `Python 3.11.x`，且 pip 路径位于当前仓库的 `.venv` 中。
+首次 clone 后直接运行；已有仓库先 `git pull`，再运行同一组命令。`uv sync --locked` 安装锁定的运行时和开发依赖，`uv run` 自动使用项目 `.venv`，无需 `source .venv/bin/activate`。
 
-### 检查 NVIDIA 驱动
+## 临时代理
+
+先尝试直接连接。只有当前网络确实无法访问依赖源时，才把代理变量临时前缀到单条命令，例如：
 
 ```bash
-nvidia-smi
+HTTP_PROXY=http://cachyos:7897 HTTPS_PROXY=http://cachyos:7897 uv sync --locked --python 3.11.15
 ```
 
-应能看到 RTX 4060 Laptop、驱动版本和显存信息。`nvidia-smi` 显示的 `CUDA Version` 是驱动可支持的最高 CUDA 版本提示，不等于虚拟环境中 PyTorch 实际使用的 CUDA runtime 版本。
+这种写法只影响该命令，不要把代理持久写入项目文件、shell 配置或 Git 配置。示例不含凭据；不得提交代理用户名、密码、token、私有 URL 或其他凭据。
 
-### 安装 PyTorch
-
-根据 PyTorch 官方选择器选择 Linux、Pip、Python，以及驱动支持的 CUDA 版本。官方命令形式通常类似：
+## 环境检查器
 
 ```bash
-python -m pip install torch --index-url https://download.pytorch.org/whl/cuXXX
+uv run python scripts/check_environment.py
 ```
 
-这里的 `cuXXX` 必须替换为官方当前提供且与你的驱动兼容的版本，不能原样执行。若暂时只做 CPU 学习，也可以先安装官方 CPU wheel。
+检查器不下载模型、不安装软件，也不修改驱动。它依次报告：
 
-后续任务创建 `pyproject.toml` 后，从仓库根目录安装项目与开发依赖：
+- Python 版本和 PyTorch 导入状态。
+- 确定性的 CPU Tensor 运算结果。
+- CUDA 可用时的 PyTorch/CUDA runtime、GPU 名称、总显存、Compute Capability、BF16 支持和 CUDA Tensor 运算结果。
+
+每行状态和进程退出码含义如下：
+
+- `[PASS]`：该项通过。
+- `[SKIPPED] CUDA`：CUDA 当前不可用，但 Python、PyTorch 和 CPU 路径正常；CPU-only 环境整体仍为成功。
+- `[FAIL]`：Python、导入、CPU 运算或 CUDA 查询/运算失败。
+- 最后一行 `[PASS] 环境检查 / Environment check` 对应退出码 `0`；`[FAIL]` 对应退出码 `1`，适合脚本和 CI 判断。
+
+CPU 机器的正常结果可以包含 `[SKIPPED] CUDA`，并以总体 `[PASS]` 和退出码 `0` 结束。GPU 机器只有实际 CUDA smoke test 通过才能算 GPU 验证成功；检查器结果是权威依据。
+
+## PyTorch wheel、CUDA runtime 与驱动
+
+项目锁定的 Linux PyTorch wheel 报告 `torch==2.7.1+cu126`，并通过 Python 依赖携带 CUDA 12.6 runtime 库。它们不是系统 NVIDIA 驱动，也不要求为了普通 PyTorch 使用而先安装完整 CUDA Toolkit。
+
+`nvidia-smi` 显示的 `CUDA Version` 是系统驱动可支持的最高 CUDA 版本提示，不是当前 Python 环境的 runtime 版本。当前 runtime 应以检查器输出的 `torch.version.cuda` 为准。
+
+CUDA 12.x 的 minor-version compatibility 需要 NVIDIA 525 系列或更新驱动，优先使用更新且仍受支持的驱动。若 `nvidia-smi` 失败或驱动过旧，应由宿主机或服务器管理员处理，而不是修改锁文件或随意重装 CUDA Toolkit。
+
+RTX 4060 和 A10 都受该 PyTorch 构建支持。A10 属于受支持的 Ampere 架构，但架构兼容不等于目标服务器已经验证；实际 A10 验证仍待在该机器运行 `nvidia-smi` 和环境检查器并看到 CUDA `[PASS]`。
+
+## 双机工作流
+
+本地和服务器只同步源码、锁文件和小型结果，不同步 `.venv`、模型缓存或权重。常见循环如下：
+
+1. 在 RTX 4060/CPU 上 pull、locked sync、运行检查器和测试。
+2. 通过 Git 把同一提交同步到 A10。
+3. 在 A10 上运行完全相同的四条标准命令。
+4. 只有检查器 CUDA 状态为 `[PASS]` 后才运行较大 GPU 实验。
+5. 在周记中记录提交 SHA、检查器输出摘要、设备、dtype 和实验结果。
+
+长时间服务器实验使用管理员提供的 `tmux`。不要提交模型权重、缓存、虚拟环境、benchmark 大文件或任何凭据。
+
+## 有意更新依赖
+
+普通 clone/pull 后不要运行未锁定的解析命令。只有确实要更新依赖时：
+
+1. 编辑 `pyproject.toml` 中的直接依赖。
+2. 运行未锁定的 `uv lock`，审查 `uv.lock` 的解析变化。
+3. 运行未锁定的 `uv sync --python 3.11.15`，验证新环境。
+4. 运行测试和环境检查器。
+5. 用锁定、无 header 的规范命令重新生成兼容导出：
 
 ```bash
-python -m pip install -e '.[dev]'
+uv export --locked --format requirements-txt --no-dev --no-header --output-file requirements.txt
 ```
 
-`-e` 表示 editable install：修改 `src/learn_qwen3_moe` 后不必重复安装。当前文档任务尚未创建 `pyproject.toml`，因此应在后续项目配置任务完成后执行。
+提交前审查 `pyproject.toml`、`uv.lock` 和 `requirements.txt` 的差异。`--no-header` 避免输出目标路径进入文件，使导出可以稳定地逐字节比较。
 
-### 验证 PyTorch 与 CUDA
+## 硬件范围
 
-```bash
-python - <<'PY'
-import torch
-
-print("torch:", torch.__version__)
-print("torch CUDA runtime:", torch.version.cuda)
-print("CUDA available:", torch.cuda.is_available())
-if torch.cuda.is_available():
-    print("device:", torch.cuda.get_device_name(0))
-    print("capability:", torch.cuda.get_device_capability(0))
-    x = torch.arange(6, device="cuda", dtype=torch.float32).reshape(2, 3)
-    print("test tensor:", x)
-    print("allocated bytes:", torch.cuda.memory_allocated())
-PY
-```
-
-CPU 安装时 `CUDA available: False` 是预期结果；CUDA 安装且驱动正常时应为 `True`。
-
-## A10 服务器
-
-### 登录并检查资源
-
-本地创建 SSH key（已有 key 可跳过）：
-
-```bash
-ssh-keygen -t ed25519 -C "learn-qwen3-moe"
-ssh-copy-id <user>@<server-host>
-ssh <user>@<server-host>
-```
-
-在服务器上先检查：
-
-```bash
-nvidia-smi
-df -h
-free -h
-command -v uv >/dev/null && uv python find 3.11 || python3 --version
-```
-
-确认看到 NVIDIA A10 及约 24GB 显存。还要确认系统内存和数据盘空间；CPU offload 需要足够 RAM，模型下载和缓存可能同时占用多个副本。
-
-### 创建服务器虚拟环境
-
-假设仓库位于服务器的 `~/learn-qwen3-moe`。服务器没有 `uv` 时，先按上面的“Linux 基础工具与 Python 3.11”步骤安装，或使用管理员提供的 Python 3.11：
-
-```bash
-cd ~/learn-qwen3-moe
-uv python install 3.11
-uv venv --seed --python 3.11 .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-```
-
-同样从 PyTorch 官方选择器取得服务器适用的安装命令，然后验证：
-
-```bash
-python - <<'PY'
-import torch
-
-print("torch:", torch.__version__)
-print("runtime CUDA:", torch.version.cuda)
-print("available:", torch.cuda.is_available())
-if torch.cuda.is_available():
-    print("device:", torch.cuda.get_device_name(0))
-    print("BF16 supported:", torch.cuda.is_bf16_supported())
-PY
-```
-
-后续 `pyproject.toml` 创建后执行：
-
-```bash
-python -m pip install -e '.[dev]'
-python -m pytest
-```
-
-### 推荐 SSH 配置
-
-在本地 `~/.ssh/config` 中可配置别名：
-
-```sshconfig
-Host qwen-a10
-    HostName <server-host>
-    User <user>
-    IdentityFile ~/.ssh/id_ed25519
-    ServerAliveInterval 60
-```
-
-之后使用：
-
-```bash
-ssh qwen-a10
-```
-
-长时间 benchmark 建议使用服务器已有的 `tmux`：
-
-```bash
-tmux new -s qwen-moe
-```
-
-不要在未获得许可时安装系统包、修改驱动或占满共享数据盘。
-
-## 双机代码同步
-
-推荐用 Git 远端同步源码和文档，但不要提交模型权重、虚拟环境、缓存或 benchmark 大文件。当前仓库已经初始化 Git；配置远端后即可在本地与服务器之间同步后续学习成果。
-
-一次常见工作循环：
-
-1. 在本地 RTX 4060/CPU 写实现并运行小测试。
-2. 同步源码到服务器，不同步 `.venv` 和模型缓存。
-3. SSH 登录 A10，激活服务器自己的 `.venv`。
-4. 先运行同一组 CPU/小 CUDA 测试，再运行较大实验。
-5. 把命令、版本、配置和结果摘要写入 `docs/progress.md` 的周记副本。
-
-如果没有 Git 远端，可临时使用 `rsync`，并明确排除环境和模型目录。第一次必须加 `--dry-run`（短选项 `-n`）预览：
-
-```bash
-rsync -avn --exclude '.venv/' --exclude '__pycache__/' --exclude '.pytest_cache/' /home/zbc/learn-qwen3-moe/ qwen-a10:~/learn-qwen3-moe/
-```
-
-逐项检查预览输出、源路径和目标路径。源路径末尾的 `/` 表示同步目录内容；目标端同名文件会被本地版本覆盖。先备份服务器上的独立实验结果，初学阶段不要添加 `--delete`。确认预览无误后才去掉 `-n`：
-
-```bash
-rsync -av --exclude '.venv/' --exclude '__pycache__/' --exclude '.pytest_cache/' /home/zbc/learn-qwen3-moe/ qwen-a10:~/learn-qwen3-moe/
-```
-
-## 硬件角色与 dtype
-
-| 工作 | 本地 RTX 4060 8GB | A10 24GB | CPU |
+| 工作 | RTX 4060 8GB | A10 24GB | CPU |
 | --- | --- | --- | --- |
-| 单元测试、小张量手算 | 推荐 | 可用 | 推荐 |
+| 单元测试、小张量验证 | 推荐 | 可用 | 推荐 |
 | 微型 Dense/MoE 模型 | 推荐 | 推荐 | 可用 |
-| BF16 小模型实验 | 视支持情况 | 推荐 | 慢，仅作参考 |
-| Qwen3-30B-A3B 全量 BF16 | 不可行 | 不可行 | 需约 60GB 权重且极慢，还需额外 RAM |
-| Qwen3-30B-A3B 4-bit | 通常仍紧张 | 可作为后期实验，取决于后端与额外开销 | 可配合 offload，速度慢 |
-| 吞吐/显存 benchmark | 小配置 | 主要设备 | 参考 |
+| BF16 小模型实验 | 视检查结果 | 推荐，但尚待实机验证 | 慢，仅作参考 |
+| Qwen3-30B-A3B 全量 BF16 | 不可行 | 不可行 | 权重约 60GB 且极慢 |
+| 量化/显存 benchmark | 小配置 | 后期主要设备 | 参考/offload |
 
-不要仅凭“30B-A3B 每 token 激活约 3B 参数”估算加载显存。所有专家权重仍需驻留在 GPU、CPU 或二者之间。30B 参数按 BF16 的权重理论体积约为 `30e9 * 2 bytes = 60GB`；实际运行还需要量化元数据或框架对象、激活、KV Cache 和工作区。
-
-## 磁盘与模型下载注意事项
-
-初始环境配置**不需要下载模型**。第 1-10 周使用随机初始化的微型配置即可。
-
-在第 11 周以后下载任何 checkpoint 前：
-
-1. 阅读模型仓库文件列表和许可证/访问要求。
-2. 用权重分片总大小估算实际下载量。
-3. 运行 `df -h`，为下载临时文件、Hugging Face cache 和可能的转换副本预留空间。
-4. 明确 cache 位置，例如大容量数据盘，而不是较小的系统盘。
-5. 先下载配置、tokenizer 或权重索引等小文件做结构检查。
-6. 不把 token、私有 URL、模型权重或 cache 提交到源码仓库。
-
-可按服务器策略设置缓存位置：
-
-```bash
-export HF_HOME=/path/to/large-disk/huggingface
-```
-
-`/path/to/large-disk` 是占位符，必须替换为已获准使用且确实存在的目录。不要在初始配置阶段执行下载命令。
+“每 token 激活约 3B 参数”不表示只需保存 3B 参数。全部专家权重仍要位于 GPU、CPU 或两者之间；30B 参数的 BF16 权重理论体积约 60GB，尚未计入 KV Cache、激活和框架开销。
 
 ## 常见问题排查
 
-### `uv` 或 Python 3.11 不可用
+### `uv` 或 Python 3.11.15 不可用
 
-- 重新加载 shell，或执行 `source "$HOME/.local/bin/env"` 后检查 `uv --version`。
-- 执行 `uv python install 3.11` 和 `uv python find 3.11`；受管理服务器使用管理员提供的 Python 3.11。
-- 如果发行版自带的 `python3 --version` 已是兼容版本，也可用 `python3 -m venv .venv`；Ubuntu 22.04 默认 Python 3.10 不满足本项目推荐的 3.11 环境。
-- 不要强行修改系统 Python 的符号链接。
+- 重新加载 shell，检查 `uv --version`。
+- 运行 `uv python install 3.11.15`，不要修改系统 Python 符号链接。
+- 受管理服务器若禁止下载 Python，联系管理员提供精确的 Python 3.11.15 解释器。
 
-### `No module named venv` 或创建环境失败
+### locked sync 报锁文件不一致
 
-- 使用发行版 Python 创建环境时通常需要对应的 `python3-venv` 包；使用 `uv venv` 时不依赖该包。
-- 删除创建失败且不完整的 `.venv` 后重新创建；确认仓库内没有要保留的数据放在其中。
+- 确认 pull 到了同一提交，且 `pyproject.toml`、`uv.lock` 都没有本地误改。
+- 日常安装不要去掉 `--locked` 让命令静默更新依赖。
+- 只有有意更新依赖时才按上面的维护流程运行 `uv lock` 和未锁定的 `uv sync`。
+
+### 下载超时或连接失败
+
+- 先确认直接访问是否只是暂时失败，然后重试。
+- 网络确需代理时，只给失败的单条命令加临时 `HTTP_PROXY`/`HTTPS_PROXY` 前缀。
+- 不把代理设置或凭据写入仓库；代理仍失败时保留完整 uv 错误信息供网络管理员排查。
 
 ### `torch.cuda.is_available()` 为 `False`
 
-- 先运行 `nvidia-smi`。若失败，优先处理宿主机/服务器驱动或 WSL GPU 透传。
-- 检查是否误装 CPU-only PyTorch：打印 `torch.__version__` 和 `torch.version.cuda`。
-- 确认当前 shell 已激活正确 `.venv`，并用 `python -m pip show torch` 查看安装位置。
-- 不要用安装完整 CUDA Toolkit 作为第一反应；PyTorch wheel 通常自带所需 runtime 库。
+- 先运行 `nvidia-smi`。失败通常表示驱动、WSL 透传或设备权限问题。
+- 运行检查器确认 PyTorch wheel 版本和 `torch.version.cuda`；不要根据 `nvidia-smi` 的 CUDA Version 猜 wheel。
+- 确认使用 `uv run`，避免误用系统 Python 或其他虚拟环境。
+- CPU 机器上 CUDA `[SKIPPED]` 是正常成功状态；预期有 GPU 的机器则继续检查驱动是否为 NVIDIA 525 系列或更新版本。
+
+### CUDA 检查为 `[FAIL]`
+
+- 保留检查器打印的原始异常摘要，并记录 `nvidia-smi` 输出、驱动版本和 GPU 型号。
+- 不要先删除锁文件、改装另一个 torch 或安装完整 CUDA Toolkit，这会掩盖实际驱动/设备问题。
+- A10 在 CUDA smoke test 成功前保持“待验证”，不能只凭型号宣称通过。
 
 ### `CUDA out of memory`
 
-- 记录失败时的模型、batch、序列长度、dtype 和已占用显存。
-- 先减小 `B/S/D/层数/专家数`，确认实现正确；不要立刻清空所有缓存掩盖峰值来源。
-- 用 `nvidia-smi` 检查其他进程，用 PyTorch 内存统计区分 allocated 与 reserved。
-- 30B BF16 在 8GB 或 24GB 单卡 OOM 是容量限制，不是环境安装错误。
+- 记录模型、batch、序列长度、dtype 和显存统计。
+- 先减小 batch、序列长度、隐藏维度、层数或专家数。
+- 30B BF16 在 8GB 或 24GB 单卡 OOM 是容量限制，不是安装错误。
 
 ### BF16 报错或结果异常
 
-- 检查 `torch.cuda.is_bf16_supported()`。
-- 正确性参考优先在 CPU/FP32 小张量上运行，再按硬件支持切换 dtype。
-- 不假设所有算子、量化库或 GPU 对 BF16 支持相同。
+- 查看检查器报告的 BF16 支持状态。
+- 正确性参考先使用 CPU/FP32 小张量，再按硬件支持切换 dtype。
+- 不假设所有算子、量化后端或 GPU 的 BF16 行为完全相同。
 
-### Editable install 失败
+### pytest 失败
 
-- 确认位于仓库根目录，并且后续任务已经创建 `pyproject.toml`。
-- 确认使用虚拟环境内的 `python -m pip`。
-- 完整保留错误输出，不要通过随意移动 `src` 文件规避包配置问题。
+- 使用规范命令 `uv run pytest`，不要调用环境外的 `pytest`。
+- 先处理第一个失败并保留完整 traceback；CUDA 不可用本身不应导致环境检查测试失败。
 
-### SSH 中断后任务停止
+## 模型与磁盘
 
-- 使用 `tmux` 保持会话。
-- benchmark 将结果写到明确的小型文本/JSON 文件，并记录启动命令。
-- 不在共享服务器上启动无边界的下载或生成任务。
+初始环境配置不下载模型。第 11 周以后下载 checkpoint 前，先检查许可证、文件总大小、`df -h`、缓存目录和可用 RAM；CPU offload 还需要额外内存。不得提交 token、私有 URL、权重或缓存。

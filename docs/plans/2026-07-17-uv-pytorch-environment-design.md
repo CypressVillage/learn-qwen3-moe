@@ -4,7 +4,7 @@
 
 为 RTX 4060 Laptop 8GB 和单张 A10 24GB 建立一套统一、可复现的 Python/PyTorch 学习环境。使用 `uv` 管理 Python、依赖和锁文件，同时导出传统 `requirements.txt` 供兼容工具使用。
 
-当前仓库中的 `.venv` 使用 Python 3.13，缺少 pip 和 PyTorch，与现有环境文档要求的 Python 3.11 不一致。本设计将 Python 3.11 设为项目标准版本。
+本设计将 Python 3.11.15 设为项目标准版本。
 
 ## 依赖来源
 
@@ -12,7 +12,8 @@
 
 ```toml
 dependencies = [
-  "torch>=2.6,<3",
+  "numpy==2.2.6",
+  "torch==2.7.1",
 ]
 
 [dependency-groups]
@@ -29,12 +30,13 @@ uv export --locked --format requirements-txt --no-dev --no-header --output-file 
 
 当前提交的导出格式已使用项目支持的 `uv 0.11.28` 检查。暂不在 `pyproject.toml` 中添加未经兼容性验证的任意 uv 版本约束；更换 uv 版本或导出格式时，必须审查 `uv.lock` 和 `requirements.txt` 的差异。
 
-项目使用 `.python-version` 指定 Python 3.11。标准安装流程为：
+项目使用 `.python-version` 指定 Python 3.11.15。标准安装流程为：
 
 ```bash
-uv python install 3.11
-uv sync --locked --python 3.11
+uv python install 3.11.15
+uv sync --locked --python 3.11.15
 uv run python scripts/check_environment.py
+uv run pytest
 ```
 
 ## PyTorch 与 CUDA 策略
@@ -66,7 +68,7 @@ docs/environment.md
 .gitignore
 ```
 
-不在本次任务中安装 Transformers、Accelerate、量化库或模型下载工具。第一周教程只需要 PyTorch；后续依赖在对应学习阶段加入。
+不在本次任务中安装 Transformers、Accelerate、量化库或模型下载工具。第一周教程以 PyTorch 为核心；NumPy 仅用于 PyTorch 数据互操作和无缺失依赖警告的运行环境，不代表扩大到 Transformers。后续依赖在对应学习阶段加入。
 
 ## 环境检查器
 
@@ -85,8 +87,8 @@ docs/environment.md
 
 ## 状态与错误处理
 
-- Python 不是 3.11：返回失败，提示运行 `uv python install 3.11` 和 `uv sync --locked --python 3.11`。
-- PyTorch 无法导入：返回失败，提示运行 `uv sync --locked --python 3.11`，并保留导入错误摘要。
+- Python 不是 3.11：返回失败，提示运行 `uv python install 3.11.15` 和 `uv sync --locked --python 3.11.15`。
+- PyTorch 无法导入：返回失败，提示运行 `uv sync --locked --python 3.11.15`，并保留导入错误摘要。
 - PyTorch 可导入但 CUDA 不可用：CPU 检查通过，CUDA 状态标记为跳过；这不代表项目依赖安装失败。
 - CUDA 可用但设备查询或张量运算失败：返回失败，显示原始异常摘要，并链接到环境排查文档。
 - 没有 NVIDIA GPU：允许完成 CPU 验收，不伪造 GPU 检查结果。
@@ -111,8 +113,10 @@ RTX 4060 与 A10 使用同一组命令：
 
 ```bash
 git pull
-uv sync --locked --python 3.11
+uv python install 3.11.15
+uv sync --locked --python 3.11.15
 uv run python scripts/check_environment.py
+uv run pytest
 ```
 
 两台机器使用同一锁文件时应具有一致的 Python、PyTorch 和项目依赖版本。检查输出中的 GPU 名称、显存、Compute Capability 和可能的 BF16 状态可以不同。当前锁文件在架构上适用于 A10，但 A10 状态仍为未验证，直到该机器的驱动检查和 CUDA smoke test 成功。
@@ -122,7 +126,8 @@ uv run python scripts/check_environment.py
 在当前工作区执行：
 
 ```bash
-uv sync --locked --python 3.11
+uv python install 3.11.15
+uv sync --locked --python 3.11.15
 uv run pytest
 uv run python scripts/check_environment.py
 uv export --locked --format requirements-txt --no-dev --no-header --output-file /tmp/requirements.txt
