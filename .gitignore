@@ -12,6 +12,7 @@ env/
 
 # Test and tool caches
 .pytest_cache/
+.uv-cache/
 .coverage
 htmlcov/
 .mypy_cache/
