@@ -78,12 +78,21 @@ class FakeTorch:
         return FakeTensor(values)
 
 
-def test_python_311_is_accepted():
-    report = check_python(SimpleNamespace(major=3, minor=11, micro=9))
+def test_python_31115_is_accepted():
+    report = check_python(SimpleNamespace(major=3, minor=11, micro=15))
 
     assert report["ok"] is True
     assert report["status"] == "PASS"
-    assert "3.11.9" in report["summary"]
+    assert "3.11.15" in report["summary"]
+
+
+def test_python_3119_is_rejected_with_uv_guidance():
+    report = check_python(SimpleNamespace(major=3, minor=11, micro=9))
+
+    assert report["ok"] is False
+    assert report["status"] == "FAIL"
+    assert "uv python install 3.11.15" in report["summary"]
+    assert "uv sync --locked --python 3.11.15" in report["summary"]
 
 
 @pytest.mark.parametrize("major, minor", [(3, 10), (3, 12), (4, 0)])

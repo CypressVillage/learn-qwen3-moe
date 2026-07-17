@@ -4,14 +4,20 @@ import importlib
 import sys
 
 
+REQUIRED_PYTHON_VERSION = (3, 11, 15)
+
+
 def check_python(version_info):
     version = f"{version_info.major}.{version_info.minor}.{version_info.micro}"
-    if (version_info.major, version_info.minor) == (3, 11):
+    required_version = ".".join(map(str, REQUIRED_PYTHON_VERSION))
+    if (version_info.major, version_info.minor, version_info.micro) == (
+        REQUIRED_PYTHON_VERSION
+    ):
         return {
             "name": "Python",
             "status": "PASS",
             "ok": True,
-            "summary": f"Python {version} is supported.",
+            "summary": f"Python {version} matches the required version.",
         }
 
     return {
@@ -19,8 +25,9 @@ def check_python(version_info):
         "status": "FAIL",
         "ok": False,
         "summary": (
-            f"Python {version} is unsupported. Run `uv python install 3.11.15`, "
-            "then `uv sync --locked --python 3.11.15`."
+            f"Python {version} does not match required {required_version}. Run "
+            f"`uv python install {required_version}`, then "
+            f"`uv sync --locked --python {required_version}`."
         ),
     }
 
