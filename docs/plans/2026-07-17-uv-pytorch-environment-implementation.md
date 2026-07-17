@@ -32,8 +32,8 @@
 **Steps:**
 1. Run `uv sync --python 3.11`, using `HTTP_PROXY` and `HTTPS_PROXY` with `http://cachyos:7897` only if direct access fails.
 2. Confirm the environment uses Python 3.11 and imports PyTorch.
-3. Export runtime dependencies with `uv export --format requirements-txt --no-dev --output-file requirements.txt`.
-4. Re-export to `/tmp/opencode/requirements.txt` and compare byte-for-byte.
+3. Export runtime dependencies with `uv export --format requirements-txt --no-dev --no-header --output-file requirements.txt`.
+4. Re-export with `uv export --format requirements-txt --no-dev --no-header --output-file /tmp/opencode/requirements.txt` and compare byte-for-byte. `--no-header` avoids embedding the output path, keeping comparisons stable across destinations.
 
 ### Task 3: Implement the environment checker with TDD
 
@@ -73,7 +73,7 @@
 uv sync --python 3.11
 uv run pytest
 uv run python scripts/check_environment.py
-uv export --format requirements-txt --no-dev --output-file /tmp/opencode/requirements.txt
+uv export --format requirements-txt --no-dev --no-header --output-file /tmp/opencode/requirements.txt
 diff requirements.txt /tmp/opencode/requirements.txt
 git diff --check
 git status --short --branch

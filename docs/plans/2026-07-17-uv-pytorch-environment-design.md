@@ -21,10 +21,10 @@ dev = [
 ]
 ```
 
-`uv.lock` 由 `uv lock`/`uv sync` 生成，用于锁定本地 RTX 4060 和 A10 服务器上的实际版本。`requirements.txt` 由以下命令生成，不手工修改：
+`uv.lock` 由 `uv lock`/`uv sync` 生成，用于锁定本地 RTX 4060 和 A10 服务器上的实际版本。`requirements.txt` 由以下命令生成，不手工修改。`--no-header` 避免在导出文件中嵌入输出路径，使不同目标路径的逐字节比较保持稳定：
 
 ```bash
-uv export --format requirements-txt --no-dev --output-file requirements.txt
+uv export --format requirements-txt --no-dev --no-header --output-file requirements.txt
 ```
 
 项目使用 `.python-version` 指定 Python 3.11。标准安装流程为：
@@ -121,7 +121,7 @@ uv run python scripts/check_environment.py
 uv sync --python 3.11
 uv run pytest
 uv run python scripts/check_environment.py
-uv export --format requirements-txt --no-dev --output-file /tmp/requirements.txt
+uv export --format requirements-txt --no-dev --no-header --output-file /tmp/requirements.txt
 diff requirements.txt /tmp/requirements.txt
 ```
 
