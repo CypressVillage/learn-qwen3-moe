@@ -20,3 +20,4 @@ testpaths = ["tests"]
 
 [tool.uv]
 package = false
+required-version = "==0.11.28"

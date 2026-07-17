@@ -28,11 +28,12 @@ dev = [
 uv export --locked --format requirements-txt --no-dev --no-header --output-file requirements.txt
 ```
 
-当前提交的导出格式已使用项目支持的 `uv 0.11.28` 检查。暂不在 `pyproject.toml` 中添加未经兼容性验证的任意 uv 版本约束；更换 uv 版本或导出格式时，必须审查 `uv.lock` 和 `requirements.txt` 的差异。
+项目精确支持 `uv 0.11.28`，并在 `[tool.uv]` 中设置 `required-version = "==0.11.28"`；安装后必须用 `uv --version` 确认版本。更换 uv 版本或导出格式时，必须同时更新约束并审查 `uv.lock` 和 `requirements.txt` 的差异。
 
 项目使用 `.python-version` 指定 Python 3.11.15。标准安装流程为：
 
 ```bash
+uv --version
 uv python install 3.11.15
 uv sync --locked --python 3.11.15
 uv run python scripts/check_environment.py
@@ -113,6 +114,7 @@ RTX 4060 与 A10 使用同一组命令：
 
 ```bash
 git pull
+uv --version
 uv python install 3.11.15
 uv sync --locked --python 3.11.15
 uv run python scripts/check_environment.py
@@ -126,7 +128,9 @@ uv run pytest
 在当前工作区执行：
 
 ```bash
+uv --version
 uv python install 3.11.15
+uv lock --check
 uv sync --locked --python 3.11.15
 uv run pytest
 uv run python scripts/check_environment.py
@@ -136,6 +140,7 @@ diff requirements.txt /tmp/requirements.txt
 
 验收要求：
 
+- `uv --version` 报告 0.11.28，`uv lock --check` 确认锁文件与项目配置一致。
 - `uv sync --locked` 创建 Python 3.11 环境并成功安装锁定依赖，且不修改 `uv.lock`。
 - 所有测试通过。
 - 环境检查器在 CPU 环境中成功运行，CUDA 缺失只标记为跳过。

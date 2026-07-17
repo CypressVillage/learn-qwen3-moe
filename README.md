@@ -39,6 +39,14 @@
 ```text
 learn-qwen3-moe/
 ├── README.md                         # 项目入口与首次学习流程
+├── pyproject.toml                    # 手工维护的项目依赖与 uv 配置
+├── .python-version                   # 项目 Python 3.11.15
+├── uv.lock                           # uv 解析的精确依赖锁
+├── requirements.txt                  # 生成的运行时兼容导出
+├── scripts/
+│   └── check_environment.py          # Python、PyTorch 与 CUDA 检查器
+├── tests/
+│   └── test_check_environment.py     # 环境检查器测试
 ├── docs/
 │   ├── roadmap.md                    # 16 周逐周路线
 │   ├── environment.md                # 本地与服务器环境
@@ -51,7 +59,7 @@ learn-qwen3-moe/
 
 ## 快速开始
 
-安装 `uv` 后，在每次 clone 或 pull 后从仓库根目录执行：
+安装项目支持的 `uv 0.11.28` 后，在每次 clone 或 pull 后从仓库根目录执行：
 
 ```bash
 uv python install 3.11.15
