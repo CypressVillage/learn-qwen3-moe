@@ -57,6 +57,8 @@
 
 ## 第 2 周：广播、矩阵乘法与 `nn.Module`
 
+完整教程：[第二周教程：矩阵乘法与 nn.Module](tutorials/week02-matmul-nn-module.md)
+
 **概念**
 
 - 广播规则、逐元素运算、`matmul`/`einsum`、批量矩阵乘法。
@@ -65,13 +67,13 @@
 
 **实现工作**
 
-- 不依赖 `nn.Linear` 手写教学版线性层：`[B,S,Din] @ [Din,Dout] -> [B,S,Dout]`。
-- 实现 shape assertion，并保存/加载微型 `state_dict`。
-- 为广播正确和错误案例编写测试。
+- 按完整教程在内联实验中，不依赖 `nn.Linear` 手写教学版线性层：`[B,S,Din] @ [Din,Dout] -> [B,S,Dout]`。
+- 实现 shape assertion，并保存/加载微型 `state_dict`；用断言验证状态恢复。
+- 用确定性实验和受控错误验证广播、矩阵乘法、模块状态及 dtype/device，不在本周新增正式 `src/` 模块或独立测试文件。
 
 **实验**
 
-- 比较手写线性层与 `nn.Linear(bias=False)` 的输出。
+- 比较手写线性层与采用相同 bias 配置的 `nn.Linear` 输出。
 - 比较 FP32、FP16、BF16 的误差；不支持某 dtype 时记录而非强行运行。
 
 **验收标准**
