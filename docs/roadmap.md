@@ -88,6 +88,8 @@
 
 ## 第 3 周：Token、Logits 与因果语言建模
 
+完整教程：[第三周教程：Token、Logits 与因果语言建模](tutorials/week03-token-logits-causal-lm.md)
+
 **概念**
 
 - Tokenizer 的编码/解码边界，Embedding 查表，LM Head。
@@ -116,6 +118,8 @@
 - 实现 top-k sampling 的最小版本。
 
 ## 第 4 周：Self-Attention 与 GQA
+
+完整教程：[第四周教程：Self-Attention 与 GQA](tutorials/week04-self-attention-gqa.md)
 
 **概念**
 

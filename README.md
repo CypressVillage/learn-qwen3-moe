@@ -56,7 +56,7 @@ learn-qwen3-moe/
 └── .gitignore                        # 本地环境、模型权重和输出忽略规则
 ```
 
-当前仓库已包含教学大纲、学习准备文档、第一至第二周教程和可复现的 PyTorch 环境；模型实现将在对应周次逐步创建。
+当前仓库已包含教学大纲、学习准备文档、第一至第四周教程和可复现的 PyTorch 环境；模型实现将在对应周次逐步创建。
 
 ## 快速开始
 
@@ -77,7 +77,11 @@ uv run pytest
 
 **继续学习：[第二周教程：矩阵乘法与 nn.Module](docs/tutorials/week02-matmul-nn-module.md)**
 
-也可以先阅读 [16 周路线](docs/roadmap.md)。前两周教程都不下载 Qwen3-30B-A3B，也不需要登录 Hugging Face。
+**继续学习：[第三周教程：Token、Logits 与因果语言建模](docs/tutorials/week03-token-logits-causal-lm.md)**
+
+**继续学习：[第四周教程：Self-Attention 与 GQA](docs/tutorials/week04-self-attention-gqa.md)**
+
+也可以先阅读 [16 周路线](docs/roadmap.md)。前四周教程都不下载 Qwen3-30B-A3B，也不需要登录 Hugging Face。
 
 ## 学习方法
 
