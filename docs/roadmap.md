@@ -150,6 +150,8 @@
 
 ## 第 5 周：RMSNorm、RoPE 与 QK Norm
 
+完整教程：[第五周教程：RMSNorm、RoPE 与 QK Norm](tutorials/week05-rmsnorm-rope-qk-norm.md)
+
 **概念**
 
 - RMSNorm 与 LayerNorm 的区别。
