@@ -2,6 +2,7 @@
 
 **目录**
 
+- [本周在完整推理中的位置](#week-position)
 - [这周要学会什么](#goals)
 - [学习方式](#method)
 - [开始前的环境检查](#environment-check)
@@ -18,13 +19,38 @@
 - [术语与速查表](#glossary)
 - [下一周预告](#next-week)
 
+<a id="week-position"></a>
+## 本周在完整推理中的位置
+
+前两周解决了“怎样用 Tensor 表示数据”和“怎样用矩阵乘法、`nn.Module` 组织计算”，但还没有回答一个语言模型最基本的问题：**原始文本怎样进入数值模型，模型内部的隐藏向量又怎样回到词表中的下一个 token？**
+
+完整的 decoder-only LLM 推理可以先画成下面这条链：
+
+```text
+文本
+-> Tokenizer（模型数值 forward 之外）
+-> token_ids [B,S]
+-> Embedding
+-> hidden [B,S,D]
+-> Decoder layers（本周暂缺）
+-> final hidden [B,S,D]
+-> LM Head
+-> logits [B,S,V]
+-> greedy / sampling
+-> next_token_ids [B,1]
+-> 追加到序列并继续推理（本周暂不实现）
+```
+
+本周只建立这条链的**输入接口和输出接口**：Tokenizer、Embedding、LM Head、logits、概率与一次 next-token 选择。中间负责理解上下文的 Decoder 仍然缺失，因此本周的微型模块不能根据左侧 token 改变当前位置的表示，也不能冒充完整语言模型。第四周会用 causal self-attention 第一次填补这个缺口。
+
 <a id="goals"></a>
 ## 这周要学会什么
 
-前两周建立了 Tensor、矩阵乘法和 `nn.Module` 基础。本周第一次走通语言模型输出端的数据流：
+本周先建立语言模型的输入与输出接口，并始终保留中间尚未实现的 Decoder 缺口：
 
 ```text
 文本边界 -> token_ids [B,S] -> hidden [B,S,D]
+         -> [Decoder：本周暂缺]
          -> logits [B,S,V] -> last_logits [B,V]
          -> next_token_ids [B,1]
 ```
@@ -70,7 +96,20 @@ uv run pytest
 <a id="module-1"></a>
 ## 模块 1：手工微型词表与 Tokenizer 边界
 
-真实 Tokenizer 会处理子词、特殊 token 和规范化。本周只用空格切分的手工词表观察边界，**不能把它当作 Qwen Tokenizer 的实现**。
+### 1.1 为什么不能把字符串直接交给神经网络
+
+矩阵乘法只能处理数值，不能直接理解字符串中的字、子词、空格和特殊标记。Tokenizer 先建立一份稳定的离散契约：按既定规则把文本切成 token，再把每个 token 映射为词表中的整数 ID。Embedding 随后接收这些 ID，并把它们变成可计算的连续向量。
+
+```text
+text --Tokenizer--> token_ids --Embedding--> hidden
+字符串规则             整数索引              浮点表示
+```
+
+Tokenizer 与 Embedding 不能互相替代：Tokenizer 不保存每个 token 的隐藏向量，Embedding 也不负责切分字符串、规范化文本或添加特殊 token。跳过 Tokenizer，就没有稳定的词表索引契约；把字符串处理混入本教程的数值 `forward`，又会模糊“文本预处理失败”和“Tensor 计算失败”的边界。
+
+真实 Qwen Tokenizer 会处理子词/字节级切分、特殊 token，并通过 tokenizer API 应用 chat template；具体 pipeline 是否包含独立 normalization 步骤必须查看目标 tokenizer 配置。本周只用空格切分的手工词表观察接口，**不能把它当作 Qwen Tokenizer 的实现**。
+
+### 1.2 用手工词表观察边界
 
 ```python
 import torch
@@ -124,7 +163,9 @@ except ValueError as error:
 <a id="module-2"></a>
 ## 模块 2：Embedding 查表
 
-`nn.Embedding(V,D)` 保存权重 `[V,D]`。每个整数 ID 选择同编号的一行，因此输入 `[B,S]` 保留两个轴，并新增宽度 `D`：
+token ID 只是类别编号。ID 2 不表示它是 ID 1 的“两倍”，相邻编号也不表示语义更接近；如果把整数编号直接当作连续特征，后续线性层会学到错误的算术关系。
+
+Embedding 解决的是“怎样把离散类别变成连续表示”。`nn.Embedding(V,D)` 保存权重 `[V,D]`，每个整数 ID 选择同编号的一行，因此输入 `[B,S]` 保留位置轴，并把每个标量 ID 替换为长度 `D` 的向量：
 
 ```text
 token_ids [B,S] -> hidden [B,S,D]
@@ -161,6 +202,17 @@ for bad_ids in (torch.tensor([[1.0, 2.0]]), torch.tensor([[1, 6]])):
         print("embedding error:", type(error).__name__, str(error).splitlines()[-1])
 ```
 
+### 查表与 one-hot 矩阵乘法
+
+Embedding 查表可以用 one-hot 形式理解。若先把每个 ID 展开成长度 `V` 的 one-hot 向量，则：
+
+```text
+one_hot(token_ids, V) [B,S,V] @ weight [V,D]
+== weight[token_ids] [B,S,D]
+```
+
+两条路径在这个前向计算上可得到相同结果，但不能写成 `token_ids @ weight`：整数 ID 是行索引，不是长度 `V` 的特征向量。真实词表通常很大，显式构造 `[B,S,V]` 的 one-hot Tensor 会浪费存储和计算；查表直接表达“选择第 ID 行”，因此模型实现采用 Embedding。本教程同时用 `weight[token_ids]` 作为最透明的数值对照。
+
 这里 `V=6`，合法 ID 是 `0-5`。Embedding 输入必须是支持的整数索引 dtype；浮点 ID 没有“第 1.5 行”的查表语义。越界 ID 也不能靠 `clamp` 静默修复，应回到编码或词表契约排查。
 
 ### 常见误区
@@ -186,7 +238,7 @@ for bad_ids in (torch.tensor([[1.0, 2.0]]), torch.tensor([[1, 6]])):
 <a id="module-3"></a>
 ## 模块 3：LM Head 与 logits
 
-LM Head 把每个长度为 `D` 的隐藏向量投影成 `V` 个词表分数：
+Embedding 把词表 ID 送入隐藏空间，但生成时还要走相反方向：把每个位置长度为 `D` 的内部表示，转换成词表中 `V` 个候选的可比较分数。LM Head 就是这个输出投影：
 
 ```text
 hidden [B,S,D] -> logits [B,S,V]
@@ -224,6 +276,19 @@ except RuntimeError as error:
 
 第一个隐藏向量 `[1,2,3]` 产生 logits `[1,2,3,6]`。这些数只是未归一化分数：可以为负、可以大于 1，也不要求总和为 1。
 
+LM Head 不负责混合不同 token 位置，不负责把分数归一化成概率，也不负责最终选择哪个 token。没有 LM Head，模型虽然拥有内部表示，却无法把它映射回词表空间。
+
+### 独立 LM Head 与权重绑定
+
+输入 Embedding 和输出 LM Head 都涉及 `[V,D]` 权重，因此常见架构有两种组织方式：
+
+| 方式 | 参数关系 | 主要取舍 |
+| --- | --- | --- |
+| 独立权重 | Embedding 与 LM Head 各自学习 `[V,D]` | 两端可独立学习，但参数更多 |
+| 权重绑定 | LM Head 复用 `embedding.weight` | 减少约 `V*D` 个独立参数，但输入与输出表示受共享约束 |
+
+绑定后的输出仍可写成 `hidden @ embedding.weight.T`。本教程使用两个显式模块，便于分别观察查表和输出投影；即使后来把两组权重复制成相同 values，它们仍可能是两个独立 `Parameter`，**数值相同不等于权重绑定**。本项目目标 Qwen3-30B-A3B 的配置为 `tie_word_embeddings=false`，因此输入 Embedding 与 LM Head 使用独立参数；迁移到其他 checkpoint 时仍必须读取其实际配置和权重映射。
+
 ### 常见误区
 
 - logits 的最后一维 `V` 表示候选词表条目，不是隐藏特征 `D`。
@@ -247,7 +312,15 @@ except RuntimeError as error:
 <a id="module-4"></a>
 ## 模块 4：稳定 softmax 与概率
 
-softmax 把同一位置的 `V` 个 logits 转成非负且和为 1 的概率。直接计算 `exp(logits)` 可能溢出；先减去该行最大值不会改变概率比例：
+到这里需要区分三个层级：
+
+```text
+LM Head 输出 logits
+-> softmax 得到候选概率分布
+-> greedy / sampling 规则产生 token ID
+```
+
+logits 是模型给出的相对分数，不是概率，也不是最终 token。softmax 只负责把同一位置的 `V` 个 logits 转成非负且和为 1 的概率；同一个概率分布仍可交给 greedy 或随机采样等不同策略。直接计算 `exp(logits)` 可能溢出，而对一组 logits 同时加减同一常数不会改变 softmax 的概率比例，因此可以先减去该行最大值：
 
 ```python
 import torch
@@ -300,7 +373,13 @@ print("wrong-axis column sums:", wrong_axis.sum(dim=0))
 <a id="module-5"></a>
 ## 模块 5：temperature 与 greedy next-token
 
-正 temperature `T` 使用 `softmax(logits / T)`。`T<1` 通常让分布更尖，`T>1` 让分布更平；`T<=0` 不是本教程接受的数值输入。
+模型给出候选分数后，推理系统还必须规定“怎样选出一个 token ID”。常见选择包括：
+
+- **greedy**：直接选择最大 logit，结果确定，不需要先计算 softmax。
+- **sampling**：从归一化后的概率分布随机抽样，结果可能不是最大概率项。
+- **temperature**：在 sampling 前调节候选差距，本身不是完整的 token 选择规则。
+
+正 temperature `T` 使用 `softmax(logits / T)`。`T<1` 通常让分布更尖，`T>1` 让分布更平；`T<=0` 不是本教程接受的数值输入。top-k、top-p 等策略留到生成循环阶段。
 
 ```python
 import torch
@@ -332,9 +411,9 @@ for bad_temperature in (0.0, -1.0):
         print("temperature error:", error)
 ```
 
-这里最后一个位置的最大 logit 位于 ID 1，因此输出 `[[1]]`。正 temperature 下，除法和 softmax 都保持 logits 的大小顺序，所以 greedy argmax 不必先计算概率。
+这里最后一个位置的最大 logit 位于 ID 1，因此输出 `[[1]]`。正 temperature 下，除法和 softmax 都保持 logits 的大小顺序，所以 greedy argmax 不必先计算概率；sampling 则仍可能抽到其他候选。
 
-保留 `keepdim=True` 让输出为 `[B,1]`，便于以后沿序列轴追加；若省略则得到 `[B]`。
+保留 `keepdim=True` 让输出为 `[B,1]`，便于以后沿序列轴追加；若省略则得到 `[B]`。不过一次选择还不是完整生成：后续仍要追加 ID、再次执行模型或使用 KV Cache，并检查 EOS 和最大生成长度。
 
 ### 常见误区
 
@@ -358,6 +437,8 @@ for bad_temperature in (0.0, -1.0):
 
 <a id="module-6"></a>
 ## 模块 6：因果错位与 teacher forcing
+
+训练式计算与实际生成面对的信息不同：训练样本通常已经包含完整正确序列，可以一次构造所有 next-token 目标；推理时未来 token 不存在，只能把模型刚选出的 token 反馈为下一步输入。
 
 给定完整序列，next-token 任务把输入去掉最后一项，把目标去掉第一项：
 
@@ -388,9 +469,16 @@ assert fake_logits.shape[:2] == targets.shape
 print("prediction positions align with targets")
 ```
 
-teacher forcing 表示示例中已知的正确 token 被放入输入序列；每个位置的目标仍是下一个 token。它不等于允许模型读取未来信息。真正具有上下文混合能力的模型还需要 causal mask；第四周学习 causal self-attention。
+| teacher forcing / 训练式计算 | 自回归推理 |
+| --- | --- |
+| 已知完整正确样本 | 只知道 prompt 和已经生成的 token |
+| 每个位置接收正确的历史 token | 下一步接收模型刚选出的 token |
+| 可并行计算各位置 logits | 通常逐 token 迭代生成 |
+| targets 用于 loss 或评估 | 没有未来正确 token 可供模型读取 |
 
-本周的 Embedding 加 LM Head 不混合不同序列位置，因此它只是验证 token-to-logits 接口，不能冒充完整的上下文语言模型。
+teacher forcing 是输入历史的组织方式，不等于允许模型读取未来信息。具有跨位置混合能力的 Transformer 仍需要 causal mask 或等价因果结构。真实训练框架也可能传入整段 `input_ids` 和 `labels`，再在 loss 内部完成 shift；本教程显式切片，是为了让错位关系可见。
+
+本周的 Embedding 加 LM Head 根本不混合不同序列位置，因此它只验证 token-to-logits 接口，不能冒充完整的上下文语言模型。
 
 ### 常见误区
 
@@ -415,7 +503,17 @@ teacher forcing 表示示例中已知的正确 token 被放入输入序列；每
 <a id="capstone"></a>
 ## 综合任务：走通微型 token-to-logits 数据流
 
-先预测所有 shape、指定 values、概率和 greedy token，再运行。这个模块没有跨位置上下文混合，只验证接口与数值规则。
+先预测所有 shape、指定 values、概率和 greedy token，再运行。请始终把中间缺口画出来：
+
+```text
+Tokenizer -> token_ids -> Embedding -> hidden
+                                  |
+                         [Decoder 本周缺失]
+                                  |
+                               LM Head -> logits -> greedy ID
+```
+
+这个模块只验证接口、shape 和局部数值规则，没有跨位置上下文混合。综合代码中 Embedding 与 LM Head 的权重 values 被设成相同，也仍是两组独立参数；softmax 用来验证概率性质，而 greedy 路径直接对 `last_logits` 做 `argmax`。
 
 ```python
 import torch
@@ -644,10 +742,13 @@ print("all capstone checks passed")
 | --- | --- | --- | --- |
 | 教学编码 | 文本 token | `token_ids [S]` | token 必须在词表中 |
 | Embedding | `[B,S]` | `[B,S,D]` | 整数 dtype，ID 在 `[0,V)` |
+| one-hot 对照 | `[B,S,V] @ [V,D]` | `[B,S,D]` | 只用于理解，不显式构造大词表 one-hot |
 | LM Head | `[B,S,D]` | `[B,S,V]` | `Linear(D,V)` 权重 `[V,D]` |
+| tied LM Head | hidden + 共享 `[V,D]` 权重 | logits | 必须共享同一 Parameter，而非仅 values 相同 |
 | softmax | logits `[... ,V]` | probabilities 同 shape | 沿 `V`，先减最大值 |
 | temperature | logits / `T` | 调整后的概率 | `T>0` |
 | greedy | last logits `[B,V]` | IDs `[B,1]` | `argmax(-1, keepdim=True)` |
+| sampling | probabilities `[B,V]` | IDs `[B,1]` | 随机选择，可能不是最大概率项 |
 | 因果错位 | sequence `[B,L]` | inputs/targets `[B,L-1]` | 去末项 / 去首项 |
 
 调试顺序：先打印 token 与 ID，再查 ID 范围和 dtype；接着逐边界核对 `[B,S] -> [B,S,D] -> [B,S,V]`；概率异常先查 softmax 轴与有限性；next token shape 异常再查最后位置索引和 `keepdim`。
@@ -655,6 +756,6 @@ print("all capstone checks passed")
 <a id="next-week"></a>
 ## 下一周预告
 
-第四周将学习 causal self-attention、Multi-Head Attention 与 GQA。届时 Decoder 会在不改变外部 `hidden [B,S,D]` 接口的前提下，让每个位置聚合允许看到的上下文，再由 LM Head 产生 `[B,S,V]`。
+本周每个位置只经历独立查表和独立投影，因此同一个 token 的表示不会因为左侧上下文不同而改变。第四周将学习 causal self-attention、Multi-Head Attention 与 GQA，第一次填补 Decoder 缺口：在不改变外部 `hidden [B,S,D]` 接口的前提下，让每个位置聚合允许看到的历史，再由 LM Head 产生 `[B,S,V]`。
 
 开始前请确保你能解释：本周 Embedding 与 LM Head 示例为什么没有跨位置上下文能力，以及 causal mask 未来要解决什么问题。

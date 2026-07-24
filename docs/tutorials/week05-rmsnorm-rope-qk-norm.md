@@ -1,38 +1,63 @@
 # 第五周教程：RMSNorm、RoPE 与 QK Norm
 
-> 本周目标：从可手算的均方根归一化与二维旋转出发，按 Qwen3 attention 的顺序，把 input RMSNorm、逐 head QK Norm、split-half RoPE 接入第四周的 causal GQA。
+> 本周目标：解决第四周 attention 尚未处理的两个问题：控制进入子层及 Q/K 的数值尺度，并让 Q/K 点积感知 token 的相对位置；随后按 Qwen3 attention 的顺序接回 causal GQA。
 
 ## 目录
 
-1. [学习目标](#goals)
-2. [学习方式](#method)
-3. [环境与边界](#environment)
-4. [模块 1：RMSNorm](#module-1)
-5. [模块 2：QK Norm](#module-2)
-6. [模块 3：二维 split-half RoPE](#module-3)
-7. [模块 4：向量化 RoPE 与 position offset](#module-4)
-8. [模块 5：dtype 与操作顺序](#module-5)
-9. [模块 6：接入 causal GQA](#module-6)
-10. [综合任务](#capstone)
-11. [最终验收](#acceptance)
-12. [提示](#hints)
-13. [参考答案](#answers)
-14. [术语与速查表](#glossary)
-15. [Week 6 预告](#next-week)
+1. [本周在完整推理中的位置](#inference-position)
+2. [学习目标](#goals)
+3. [学习方式](#method)
+4. [环境与边界](#environment)
+5. [模块 1：RMSNorm](#module-1)
+6. [模块 2：QK Norm](#module-2)
+7. [模块 3：二维 split-half RoPE](#module-3)
+8. [模块 4：向量化 RoPE 与 position offset](#module-4)
+9. [模块 5：dtype 与操作顺序](#module-5)
+10. [模块 6：接入 causal GQA](#module-6)
+11. [综合任务](#capstone)
+12. [最终验收](#acceptance)
+13. [提示](#hints)
+14. [参考答案](#answers)
+15. [术语与速查表](#glossary)
+16. [Week 6 预告](#next-week)
+
+<a id="inference-position"></a>
+## 本周在完整推理中的位置
+
+第四周的 causal GQA 已经能让每个位置读取允许看到的 token，但仍留下两个结构性缺口：
+
+1. **尺度缺口**：hidden 经多层子层和残差路径传播时，需要明确的归一化边界；Q/K 点积也直接受每颗 head 向量尺度影响。
+2. **位置缺口**：causal mask 只告诉 attention “未来不可见”，没有告诉它两个可见 token 相隔多远。若只对同一 token 表示做共享 Q/K 投影，attention 公式本身不会自动获得绝对或相对 position。
+
+本周在第四周数据流中加入三处操作：
+
+```text
+hidden [B,S,D]
+-> input RMSNorm
+-> Q/K/V projection + reshape
+-> QK Norm(Q/K only)
+-> RoPE(Q/K only)
+-> causal GQA
+-> output [B,S,D]
+```
+
+input RMSNorm 和 QK Norm 都使用 RMSNorm 形式，但职责、输入位置和统计宽度不同；RoPE 则只改变 Q/K 的方向，不改变 shape。完成本周后仍缺少残差连接和前馈子层，因此仍不是完整 Decoder Block。
 
 <a id="goals"></a>
 ## 学习目标
 
 完成本周后，你应该能：
 
-1. 写出 RMSNorm 公式，解释它与 LayerNorm 的差别，并沿最后一维实现 FP32 统计。
-2. 区分 hidden-state RMSNorm `[B,S,D]` 与 attention 内部逐 token、逐 head 的 QK Norm `[B,S,H,Dh]`。
-3. 口述正确顺序：input RMSNorm -> Q/K/V projection -> reshape -> QK Norm -> transpose -> RoPE(Q/K) -> GQA。
-4. 从二维旋转推导 split-half RoPE，并解释它为何改变 Q/K 数值但不改变 shape。
-5. 构造 `inv_freq`、`angles`、`cos/sin`，说明 position、batch、head 与通道轴如何广播。
-6. 验证 position 0 恒等、通道对二范数保持、同位置 Q/K 点积保持和共同 offset 下 scores 保持。
-7. 解释 RoPE 频率与角度使用 FP32 基准的原因，并观察低精度误差。
-8. 保持物理复制和逻辑分组两条 causal GQA 路径数值一致。
+1. 解释第四周 attention 为什么仍需要归一化和位置信息。
+2. 写出 RMSNorm 公式，解释它与 LayerNorm 的差别，并沿最后一维实现 FP32 统计。
+3. 区分 hidden-state RMSNorm `[B,S,D]` 与 attention 内部逐 token、逐 head 的 QK Norm `[B,S,H,Dh]`。
+4. 比较 learned absolute embedding、固定 sinusoidal、relative bias 与 RoPE 的注入位置和主要取舍。
+5. 口述正确顺序：input RMSNorm -> Q/K/V projection -> reshape -> QK Norm -> transpose -> RoPE(Q/K) -> GQA。
+6. 从二维旋转推导 split-half RoPE，并解释它为何改变 Q/K 数值但不改变 shape。
+7. 构造 `inv_freq`、`angles`、`cos/sin`，说明 position、batch、head 与通道轴如何广播。
+8. 验证 position 0 恒等、通道对二范数保持、同位置 Q/K 点积保持和共同 offset 下 scores 保持。
+9. 解释 RoPE 频率与角度使用 FP32 教学基准的原因，并区分参考实现与 fused/低精度生产实现。
+10. 保持物理复制和逻辑分组两条 causal GQA 路径数值一致。
 
 建议投入 6-10 小时。CPU 可以完成全部必修内容。
 
@@ -60,7 +85,7 @@ uv run pytest
 
 本周所有必修代码只依赖 PyTorch，使用确定性 CPU 小张量，不下载模型、Tokenizer、checkpoint 或数据集。代码中的 `eps`、`rope_theta`、head 数和宽度都是明确的微型教学值；接入真实模型时必须读取目标配置，不能把这些数字当作 Qwen3 官方配置。
 
-本周只研究 normalization 与 position 如何进入 attention，不实现完整 Decoder 残差路径、MLP、SwiGLU、MoE、KV Cache、padding mask、dropout、cross-attention 或长上下文 RoPE scaling。示例是清晰的教学参考实现，不是生产级 fused kernel，也不用于性能结论。
+本周只研究 normalization 与 position 如何进入 attention，不实现完整 Decoder 残差路径、MLP、SwiGLU、MoE、KV Cache、padding mask、dropout、cross-attention 或长上下文 RoPE scaling。示例是可观察中间值的教学参考实现，不是生产级 fused kernel，也不用于性能结论。真实实现可能融合 normalization、旋转或 attention 运算，并在受控位置使用低精度；判断正确性应依据目标配置、操作语义和误差容忍，而不是要求内部 Tensor 与本教程逐 bit 相同。
 
 统一记号：
 
@@ -82,12 +107,22 @@ x = [x1, x2]，其中 x1/x2 各占最后一维的一半
 rotate_half(x) = [-x2, x1]
 ```
 
-adjacent-pair（相邻通道两两配对）也是合法布局，但它的权重排列和公式必须从头到尾一致，不能与 split-half 混用。
+adjacent-pair（相邻通道两两配对）也是合法布局。两种布局可通过相应通道排列表达同类二维旋转，但 checkpoint 权重、`rotate_half` 公式和 cos/sin 排列必须从头到尾一致，不能只替换其中一项。
 
 <a id="module-1"></a>
 ## 模块 1：RMSNorm
 
-### 1.1 公式与轴
+### 1.1 为什么 attention 前还要归一化
+
+第四周直接把 hidden 送入 Q/K/V projection。单层小张量可以正常运行，但真实 Decoder 会重复堆叠子层并通过残差路径传递表示；模型需要在明确边界控制送入子层的数值尺度。Qwen3 使用 RMSNorm，而不是 LayerNorm，作为这种归一化操作。
+
+两者都会按特征维计算统计量并带可学习逐通道缩放，主要公式差别是：LayerNorm 先减均值、再按中心化方差缩放；RMSNorm 不减均值，只按平方均值控制整体尺度。RMSNorm 公式更少一步居中运算，但这里不把“更简单”直接等同于在所有硬件和 shape 上必然更快，也不声称两者功能完全等价。
+
+常见 LayerNorm 实现还可包含逐通道 bias；本周的 Qwen3-style RMSNorm 只有逐通道 `weight`，没有 bias。参数细节仍应以目标实现和 checkpoint 为准，不能只凭层名猜测。
+
+目标 Qwen3 选择 RMSNorm。本教程选择显式函数和 FP32 统计，让归一化轴、`eps` 与 weight 广播都可观察，而不先使用 fused norm。完成 input RMSNorm 后，数据仍是 `[B,S,D]`，下一步回到整体流程进入 Q/K/V projection。
+
+### 1.2 公式与轴
 
 对最后一维为 `D` 的向量 `x`：
 
@@ -101,7 +136,7 @@ RMSNorm(x)   = normalized * weight
 
 当 `weight=1` 时，`eps` 很小的非零向量在归一化后的 RMS 约为 1。若 `weight` 非均匀，最终输出各通道被不同倍数缩放，输出 RMS 不必等于 1。
 
-### 1.2 运行前预测
+### 1.3 运行前预测
 
 先判断：输入 `[1,2,4]` 经 RMSNorm 后 shape 是否变化？第一行均值不为 0 时，RMSNorm 会不会把输出均值强制变成 0？非均匀 weight 会不会改变最终 RMS？
 
@@ -149,18 +184,18 @@ for bad_weight, bad_eps in ((torch.ones(3), 1e-6), (torch.ones(4), 0.0)):
         print("controlled error:", error)
 ```
 
-### 1.3 解释输出
+### 1.4 解释输出
 
 输入输出都为 `[B,S,D]`。`mean(x^2)` 只消去最后一维，因此保留 batch 与 token 轴。RMSNorm 只控制平方均值对应的整体尺度，不保证输出均值为 0。非均匀 weight 是可学习的逐通道缩放，发生在标准化之后。
 
-### 1.4 常见误区
+### 1.5 常见误区
 
 - 把 RMSNorm 写成 `x - mean(x)`：这混入了 LayerNorm 的居中步骤。
 - 沿 batch 或 sequence 轴统计：不同样本或 token 会互相影响。
 - 看到非均匀 weight 后输出 RMS 不为 1，就误判实现错误。
 - 直接在低精度输入上完成平方与均值，却没有明确精度基准。
 
-### 1.5 练习
+### 1.6 练习
 
 <a id="m1-e1-question"></a>
 **M1-E1**（[提示](#m1-e1-hint) · [答案](#m1-e1-answer)）：`x [2,3,8]` 做 hidden-state RMSNorm 时，统计量 shape 是什么？沿哪个轴计算？输出 shape 是什么？
@@ -179,9 +214,15 @@ for bad_weight, bad_eps in ((torch.ones(3), 1e-6), (torch.ones(4), 0.0)):
 
 ### 2.1 hidden norm 与 head norm
 
-input RMSNorm 作用于投影前的 `hidden [B,S,D]`，沿 `D` 统计。QK Norm 作用于投影并 reshape 后的 `q [B,S,Hq,Dh]` 和 `k [B,S,Hkv,Dh]`，沿 `Dh` 统计。也就是说，每个 token、每颗 head 独立归一化。
+input RMSNorm 已经控制 projection 输入的尺度，但不能替代投影后的逐 head 归一化：Q/K 经过不同权重矩阵，随后又被拆成各自的 `[Dh]` 向量。QK Norm 直接作用在参与点积的每个 query/key head 上，为 scores 的输入建立更明确的尺度边界。
 
-QK Norm 不改变 Q/K shape。V 既不做 QK Norm，也不做 RoPE；它在概率形成后提供被加权汇总的内容。
+Attention 实现也可以只依赖 input norm 与 `1/sqrt(Dh)` 缩放，或采用其他 score 控制方案；QK Norm 不是 scaled dot-product attention 公式的普遍必需项。目标 Qwen3 额外选择逐 head QK Norm，本教程因此按 checkpoint 语义复现它，而不是把这一步推广为所有 Transformer 的规则。
+
+input RMSNorm 作用于投影前的 `hidden [B,S,D]`，沿 `D` 统计。QK Norm 作用于投影并 reshape 后的 `q [B,S,Hq,Dh]` 和 `k [B,S,Hkv,Dh]`，沿 `Dh` 统计。也就是说，每个 token、每颗 head 独立归一化。两者公式相似，但不能互换：它们看到的表示、参数宽度和作用时机都不同。
+
+QK Norm 不改变 Q/K shape。V 不参与 QK 匹配分数，因此目标架构不对 V 使用 QK Norm；它在概率形成后提供被加权汇总的内容。这里是在复现 Qwen3 的具体数据流，不主张所有 attention 变体都必须采用同一选择。
+
+本教程继续复用与 input RMSNorm 相同的显式最后一维公式，但给 Q/K 使用各自宽度为 `Dh` 的 weight。完成后 q/k/v 仍保持 `[B,S,H,Dh]`；下一步 transpose 到 head-first 布局，再只对 Q/K 注入 position。
 
 正确局部顺序是：
 
@@ -267,7 +308,24 @@ assert torch.isfinite(q_normed).all() and torch.isfinite(k_normed).all()
 <a id="module-3"></a>
 ## 模块 3：二维 split-half RoPE
 
-### 3.1 从二维旋转开始
+### 3.1 为什么 mask 不能代替位置编码
+
+causal mask 对同一行只给出“允许/禁止”关系。例如 query 位置 8 可以读取位置 2 和 7，但 mask 本身不编码它们分别距离 6 和 1。模型需要另一种机制让 attention scores 感知 position。
+
+常见方案的注入位置不同：
+
+| 方案 | position 怎样进入模型 | 主要取舍 |
+| --- | --- | --- |
+| learned absolute embedding | position 向量加到 token hidden | 简单直接，但有固定训练位置表及绝对位置参数 |
+| fixed sinusoidal encoding | 固定正弦向量加到 hidden | 无需学习位置表，但位置与内容在 hidden 中相加 |
+| relative position bias | 按相对距离给 attention scores 加 bias | 直接影响匹配分数，需要定义和实现 bias 规则 |
+| RoPE | 按 position 旋转 Q/K 通道对 | 不改变 shape，使 QK 点积自然依赖相对角度 |
+
+learned absolute table 通常受已分配位置表范围约束；relative bias 和 RoPE 具有相对位置结构，但这不等于模型可无条件泛化到任意长度。超出训练上下文时仍要考虑训练分布、数值分辨率以及目标模型规定的 RoPE scaling 等边界。
+
+目标 Qwen3 使用 RoPE，因此本教程不在 hidden 上叠加绝对 position embedding，而是在形成 scores 前旋转 Q/K。本周选择显式 split-half `rotate_half` 和可检查的 cos/sin Tensor，与目标权重布局保持一致；不实现长上下文 scaling。完成旋转后 q/k shape 不变，数据流回到第四周的 scaled dot-product causal GQA。
+
+### 3.2 从二维旋转开始
 
 二维向量 `[a,b]` 旋转角度 `theta`：
 
@@ -286,7 +344,7 @@ split-half 把 `Dh` 分成前后两半。若 `x=[x1,x2]`，每个配对是 `(x1[
 
 旋转矩阵是正交矩阵，因此保持每对通道的二范数。Q 和 K 若在同一 position 使用同一组角度，它们的点积也保持。
 
-### 3.2 运行前预测
+### 3.3 运行前预测
 
 position 0 对应角度 0，此时 `cos=1,sin=0`。请先预测：输出是否等于输入？两个 split-half 通道对 `(0,2)`、`(1,3)` 的平方和是否变化？
 
@@ -339,18 +397,18 @@ except ValueError as error:
     print("controlled error:", error)
 ```
 
-### 3.3 RoPE 改变什么
+### 3.4 RoPE 改变什么
 
 RoPE 不添加 position 轴，也不改变 Q/K shape；它依据 position 改变最后一维中的方向。position 0 是恒等变换。单独旋转向量保持配对二范数；同角度同时旋转 Q/K 保持点积；不同位置使用不同角度时，点积会携带相对位置信息。
 
-### 3.4 常见误区
+### 3.5 常见误区
 
 - 把 split-half 的配对误写成 `(0,1)`、`(2,3)`；这里实际是 `(0,2)`、`(1,3)`。
 - 只检查整向量范数，不检查布局定义下的每对通道。
 - 允许奇数 `Dh`，导致最后一个通道没有旋转伙伴。
 - Q 使用 split-half、K 使用 adjacent-pair，造成不可比较的布局。
 
-### 3.5 练习
+### 3.6 练习
 
 <a id="m3-e1-question"></a>
 **M3-E1**（[提示](#m3-e1-hint) · [答案](#m3-e1-answer)）：对 `x=[1,2,3,4]`，写出 split-half 的两对通道和 `rotate_half(x)`。
@@ -495,13 +553,15 @@ for bad in bad_positions:
 
 ### 5.1 FP32 频率基准
 
-position 与 inverse frequencies 相乘后，角度误差会进入 `sin/cos`。教学主线先在 FP32 中构造 `inv_freq`、`angles`、`cos/sin`，再按目标计算 dtype 转换。这样有清晰、稳定的参考路径。
+position 与 inverse frequencies 相乘后，角度误差会进入 `sin/cos`。教学主线把 FP32 构造的 `inv_freq`、`angles`、`cos/sin` 作为参考，这样便于把公式错误与低精度舍入误差分开。模块 5 会把参考结果转换到低精度后与“直接低精度构造”比较；后续必修微型 GQA 仍整体使用 FP32 oracle，不演示完整的 model-dtype 边界。
+
+这不是“整个 attention 必须始终运行在 FP32”的性能处方。生产实现可能只在统计量或角度形成时临时升精度，再转换回 model dtype，也可能缓存 cos/sin 或把旋转融合进 kernel；只要遵守目标实现的数值契约并通过误差验证即可。
 
 BF16 支持依赖当前 CPU 与 PyTorch 后端。实验应在支持时比较误差，不支持时记录并跳过，而不是强迫通过。无论何种 dtype，关键输出必须有限。
 
 ### 5.2 QK Norm 与 RoPE 不可交换
 
-Qwen3 顺序是 `QK Norm -> RoPE`。若 norm weight 全为 1，RMS 标量缩放与正交旋转可能表现出更多可交换性；但非均匀逐通道 weight 会改变方向，而旋转又混合配对通道，因此 `Norm -> RoPE` 与 `RoPE -> Norm` 通常不等价。
+目标 Qwen3 顺序是 `QK Norm -> RoPE`：先在每颗 head 的原始通道基底中完成可学习缩放，再按 position 旋转。若 norm weight 全为 1，RMS 标量缩放与正交旋转可能表现出更多可交换性；但非均匀逐通道 weight 会改变方向，而旋转又混合配对通道，因此 `Norm -> RoPE` 与 `RoPE -> Norm` 通常不等价。实现顺序属于 checkpoint 语义的一部分，不能因为 shape 相同就调整。
 
 ### 5.3 运行前预测
 
@@ -601,7 +661,7 @@ FP32 后转换与全程低精度是两条不同路径。误差大小取决于 po
 
 ### 6.1 正确数据流
 
-本模块把前五个模块接到第四周 GQA，顺序必须保持：
+本模块把前五个模块接到第四周 GQA。这里同时存在三种“保持 shape 的变换”，最容易因 shape 全部合法而掩盖顺序错误，因此必须按目标架构保持：
 
 ```text
 hidden [B,S,D]
@@ -1163,7 +1223,7 @@ print("all capstone checks passed")
 
 <a id="c9-answer"></a>**C9：** 非均匀 weight 是对角缩放，RoPE 会混合配对通道；一般 `R(Wx) != W(Rx)`，所以必须保持目标实现规定的顺序。
 
-<a id="c10-answer"></a>**C10：** Q/K 决定匹配 scores，因此需要逐 head 规范尺度并注入位置；V 不参与匹配，只被 probabilities 汇总。GQA 的多个 query heads 共享同一 KV head，所以 V 可被逻辑共享或物理复制，但不需要旋转。
+<a id="c10-answer"></a>**C10：** 在目标 Qwen3 数据流中，Q/K 决定匹配 scores，因此对它们应用逐 head QK Norm 和 RoPE；这不是所有 attention 架构的普遍要求。V 不参与匹配，只被 probabilities 汇总。GQA 的多个 query heads 共享同一 KV head，所以 V 可被逻辑共享或物理复制，但目标路径不对它做 QK Norm 或旋转。
 
 <a id="s1-answer"></a>**S1：** input RMSNorm 统计量 `[3,5,1]`、输出 `[3,5,12]`；q QK Norm 统计量 `[3,5,3,1]`、输出 `[3,5,3,4]`。
 
@@ -1222,6 +1282,8 @@ print("all capstone checks passed")
 | GQA | `Hq % Hkv == 0`；连续 head 映射一致 |
 | causal mask | softmax 前应用；不存在全屏蔽行 |
 | dtype | FP32 频率/角度基准；低精度结果有限 |
+
+方案边界速记：causal mask 规定可见性，RoPE 提供位置相关的 QK 几何；input RMSNorm 控制子层输入，QK Norm 控制投影后每颗 Q/K head。它们解决的问题不同，不能互相替代。
 
 正确顺序速记：
 
