@@ -181,6 +181,8 @@
 
 ## 第 6 周：SwiGLU 与 Dense MLP
 
+完整教程：[第六周教程：SwiGLU 与 Dense MLP](tutorials/week06-swiglu-dense-mlp.md)
+
 **概念**
 
 - Gate、up、down projection 和 SiLU。
