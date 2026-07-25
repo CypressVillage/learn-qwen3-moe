@@ -212,6 +212,8 @@
 
 ## 第 7 周：完整 Dense Decoder
 
+完整教程：[第七周教程：完整 Dense Decoder](tutorials/week07-dense-decoder.md)
+
 **概念**
 
 - Pre-norm、残差连接、attention block、MLP block。

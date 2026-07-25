@@ -56,7 +56,7 @@ learn-qwen3-moe/
 └── .gitignore                        # 本地环境、模型权重和输出忽略规则
 ```
 
-当前仓库已包含教学大纲、学习准备文档、第一至第六周教程和可复现的 PyTorch 环境；模型实现将在对应周次逐步创建。
+当前仓库已包含教学大纲、学习准备文档、第一至第七周教程和可复现的 PyTorch 环境；模型实现将在对应周次逐步创建。
 
 ## 快速开始
 
@@ -85,7 +85,9 @@ uv run pytest
 
 **继续学习：[第六周教程：SwiGLU 与 Dense MLP](docs/tutorials/week06-swiglu-dense-mlp.md)**
 
-也可以先阅读 [16 周路线](docs/roadmap.md)。前六周教程都不下载 Qwen3-30B-A3B，也不需要登录 Hugging Face。
+**继续学习：[第七周教程：完整 Dense Decoder](docs/tutorials/week07-dense-decoder.md)**
+
+也可以先阅读 [16 周路线](docs/roadmap.md)。前七周教程都不下载 Qwen3-30B-A3B，也不需要登录 Hugging Face。
 
 ## 学习方法
 
