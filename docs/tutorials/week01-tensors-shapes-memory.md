@@ -83,7 +83,7 @@ print(x[:, 1:3].shape)
 <a id="environment-check"></a>
 ## 开始前的环境检查
 
-本节使用仓库的权威 uv 工作流，不手工激活 `.venv`，也不调用系统 Python。如果尚未安装项目支持的 uv，请先按照 [环境配置与双机工作流](../environment.md#安装-uv) 安装 uv 0.11.28，再回到仓库根目录继续。
+本节使用仓库的权威 uv 工作流，不手工激活 `.venv`，也不调用系统 Python。如果尚未安装项目支持的 uv，请先按照 [环境配置与多机器工作流](../environment.md#安装-uv) 安装 `>=0.11.28,<0.13` 范围内的 uv，再回到仓库根目录继续。
 
 ### 1. 检查 uv 并同步锁定环境
 
@@ -94,7 +94,7 @@ uv --version
 uv sync --locked --python 3.11.15
 ```
 
-`uv --version` 应以 `uv 0.11.28` 开头；`pyproject.toml` 也会拒绝其他 uv 版本。不要删除 `--locked`，否则初学时可能意外改动锁文件。
+`uv --version` 应位于项目允许的 `>=0.11.28,<0.13` 范围；`pyproject.toml` 会拒绝不兼容版本。不要删除 `--locked`，否则初学时可能意外改动锁文件。
 
 ### 2. 运行权威环境检查器
 
@@ -124,7 +124,7 @@ print("device:", x.device)
 PY
 ```
 
-若这段 CPU 代码失败，请回到 [环境配置与双机工作流](../environment.md) 排查。
+若这段 CPU 代码失败，请回到 [环境配置与多机器工作流](../environment.md) 排查。
 
 ### 4. 可选 CUDA 冒烟测试
 

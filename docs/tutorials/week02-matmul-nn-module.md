@@ -59,7 +59,7 @@ uv run python scripts/check_environment.py
 uv run pytest
 ```
 
-`uv --version` 应以 `uv 0.11.28` 开头，环境检查应总体 `[PASS]`。CPU-only 机器上的 CUDA `[SKIPPED]` 不阻塞学习。把教程代码保存为文件后，使用 `uv run python <文件路径>`，不要调用系统 Python。
+`uv --version` 应位于项目允许的 `>=0.11.28,<0.13` 范围，环境检查应总体 `[PASS]`。当前 CPU profile 中 CUDA `[SKIPPED]` 是正常结果，不阻塞学习。把教程代码保存为文件后，使用 `uv run python <文件路径>`，不要调用系统 Python。
 
 <a id="module-1"></a>
 ## 模块 1：广播复习与形状语义

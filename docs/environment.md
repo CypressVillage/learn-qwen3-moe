@@ -1,18 +1,20 @@
-# 环境配置与双机工作流
+# 环境配置与多机器工作流
 
 ## 项目标准环境
 
-RTX 4060 Laptop、A10 服务器和 CPU 学习环境使用同一套项目依赖：
+当前仓库首先提供可复现的 CPU 正确性基线：
 
 | 组件 | 锁定版本 |
 | --- | --- |
-| uv | 0.11.28 |
+| uv | `>=0.11.28,<0.13` |
 | Python | 3.11.15 |
-| PyTorch | 2.7.1；Linux wheel 运行时报告 `2.7.1+cu126` |
+| PyTorch | `2.7.1+cpu`，来自 PyTorch CPU wheel index |
 | NumPy | 2.2.6 |
-| CUDA runtime | 12.6，由 PyTorch wheel 依赖提供 |
+| CUDA runtime | 不适用；当前锁文件不安装 CUDA runtime |
 
-NumPy 是显式运行时依赖，用于 PyTorch/NumPy 数据互操作，并避免缺少 NumPy 时的运行期警告。它不表示项目开始依赖 Transformers；Transformers、Accelerate、量化库和模型下载工具仍不属于当前环境。
+CPU FP32 是所有核心模块的正确性参考，不要求本机有 GPU。模型代码不硬编码 CPU 或 CUDA，因此未来切换 GPU 时更换的是 PyTorch wheel 和运行设备，而不是 RMSNorm、RoPE、Attention、MLP 或 Decoder 的模型结构。
+
+NumPy 是显式运行时依赖，用于 PyTorch/NumPy 数据互操作。Transformers、Accelerate、量化库和模型下载工具仍不属于当前环境。
 
 ## 依赖文件职责
 
@@ -31,25 +33,26 @@ Ubuntu/WSL2 可先安装基础工具，再按 uv 官方安装方式安装：
 ```bash
 sudo apt update
 sudo apt install -y ca-certificates curl git
-curl -LsSf https://astral.sh/uv/0.11.28/install.sh | sh
+curl -LsSf https://astral.sh/uv/install.sh | sh
 source "$HOME/.local/bin/env"
 uv --version
 ```
 
-确认 `uv --version` 输出以 `uv 0.11.28` 开头。执行网络脚本前可查看 `https://astral.sh/uv/0.11.28/install.sh`。受管理服务器应使用管理员批准的安装方式。`pyproject.toml` 中的 `required-version = "==0.11.28"` 会拒绝其他 uv 版本，避免不同解析或导出行为产生未审查的差异。不要替换系统 `/usr/bin/python3`，也不需要手工创建或激活 `.venv`；`uv sync` 会管理项目环境。
+确认版本位于项目允许的 `>=0.11.28,<0.13` 范围。执行网络脚本前可以先查看脚本内容；受管理服务器应使用管理员批准的安装方式。不要替换系统 `/usr/bin/python3`，也不需要手工创建或激活 `.venv`；`uv sync` 会管理项目环境。
 
 ## clone 或 pull 后的标准命令
 
-在 RTX 4060、A10 和 CPU 机器上都执行同一组命令：
+在当前 CPU 基线环境执行：
 
 ```bash
 uv python install 3.11.15
 uv sync --locked --python 3.11.15
 uv run python scripts/check_environment.py
 uv run pytest
+uv run python examples/run_tiny_dense.py
 ```
 
-首次 clone 后直接运行；已有仓库先 `git pull`，再运行同一组命令。`uv sync --locked` 安装锁定的运行时和开发依赖，`uv run` 自动使用项目 `.venv`，无需 `source .venv/bin/activate`。
+首次 clone 后直接运行；已有仓库先 `git pull`，再运行同一组命令。`uv sync --locked` 会安装 CPU PyTorch 和当前项目的可编辑包，`uv run` 自动使用项目 `.venv`，无需 `source .venv/bin/activate`。
 
 ## 临时代理
 
@@ -84,23 +87,23 @@ CPU 机器的正常结果可以包含 `[SKIPPED] CUDA`，并以总体 `[PASS]` �
 
 ## PyTorch wheel、CUDA runtime 与驱动
 
-项目锁定的 Linux PyTorch wheel 报告 `torch==2.7.1+cu126`，并通过 Python 依赖携带 CUDA 12.6 runtime 库。它们不是系统 NVIDIA 驱动，也不要求为了普通 PyTorch 使用而先安装完整 CUDA Toolkit。
+当前项目通过显式 PyTorch CPU index 锁定 `torch==2.7.1+cpu`，因此不会安装 CUDA runtime、cuDNN、cuBLAS 或 Triton。这样可以缩小无 GPU 开发环境的下载和磁盘占用，并清楚地区分“模型代码可迁移到 GPU”和“当前环境已经验证 GPU”。
 
-`nvidia-smi` 显示的 `CUDA Version` 是系统驱动可支持的最高 CUDA 版本提示，不是当前 Python 环境的 runtime 版本。当前 runtime 应以检查器输出的 `torch.version.cuda` 为准。
+未来 GPU profile 使用的 CUDA 版 PyTorch wheel 通常会携带用户态 CUDA runtime，但不会携带系统 NVIDIA 驱动。`nvidia-smi` 显示的 `CUDA Version` 是驱动可支持的最高版本提示，不是 Python 环境当前 runtime；实际 runtime 应以 `torch.version.cuda` 为准。
 
-CUDA 12.x 的 minor-version compatibility 需要 NVIDIA 525 系列或更新驱动，优先使用更新且仍受支持的驱动。若 `nvidia-smi` 失败或驱动过旧，应由宿主机或服务器管理员处理，而不是修改锁文件或随意重装 CUDA Toolkit。
+获得 GPU 后，应先记录 GPU 型号、驱动、目标 PyTorch wheel 和所需 CUDA runtime，再建立互斥的 CUDA profile 或独立锁文件。只有在目标机器上完成环境检查、CUDA Tensor smoke test 和模型测试后，才能把该 profile 标记为可复现。
 
-RTX 4060 和 A10 都受该 PyTorch 构建支持。A10 属于受支持的 Ampere 架构，但架构兼容不等于目标服务器已经验证；实际 A10 验证仍待在该机器运行 `nvidia-smi` 和环境检查器并看到 CUDA `[PASS]`。
+不要在当前无 GPU 环境中提前锁定一个无法验证的 CUDA profile，也不要因为未来要用 GPU，就让所有 CPU 机器安装数 GB 的 CUDA 依赖。
 
-## 双机工作流
+## 多机器工作流
 
-本地和服务器只同步源码、锁文件和小型结果，不同步 `.venv`、模型缓存或权重。常见循环如下：
+机器之间只同步源码、适用的锁文件和小型结果，不同步 `.venv`、模型缓存或权重。当前循环如下：
 
-1. 在 RTX 4060/CPU 上 pull、locked sync、运行检查器和测试。
-2. 通过 Git 把同一提交同步到 A10。
-3. 在 A10 上运行完全相同的四条标准命令。
-4. 只有检查器 CUDA 状态为 `[PASS]` 后才运行较大 GPU 实验。
-5. 在周记中记录提交 SHA、检查器输出摘要、设备、dtype 和实验结果。
+1. 在 CPU 环境 pull、locked sync、运行检查器、测试和微型示例。
+2. 通过 Git 同步同一份模型源码，不复制本地 `.venv`。
+3. 获得 GPU 后，为目标机器建立经过验证的 CUDA 环境配置。
+4. 先运行环境检查和 CUDA FP32 smoke test，再运行低精度或较大实验。
+5. 在周记中记录提交 SHA、锁定 profile、检查器摘要、设备、dtype 和结果。
 
 长时间服务器实验使用管理员提供的 `tmux`。不要提交模型权重、缓存、虚拟环境、benchmark 大文件或任何凭据。
 
@@ -154,10 +157,11 @@ uv export --locked --format requirements-txt --no-dev --no-header --output-file 
 
 ### `torch.cuda.is_available()` 为 `False`
 
+- 当前 CPU profile 中这是预期结果，即使宿主机物理上有 GPU，CPU wheel 也不会提供 CUDA 计算能力。
 - 先运行 `nvidia-smi`。失败通常表示驱动、WSL 透传或设备权限问题。
-- 运行检查器确认 PyTorch wheel 版本和 `torch.version.cuda`；不要根据 `nvidia-smi` 的 CUDA Version 猜 wheel。
+- 运行检查器确认 PyTorch wheel 版本和 `torch.version.cuda`；只有切换到已验证的 CUDA profile 后才应期待 CUDA `[PASS]`。
 - 确认使用 `uv run`，避免误用系统 Python 或其他虚拟环境。
-- CPU 机器上 CUDA `[SKIPPED]` 是正常成功状态；预期有 GPU 的机器则继续检查驱动是否为 NVIDIA 525 系列或更新版本。
+- 不要根据 `nvidia-smi` 的 CUDA Version 猜 wheel，也不要直接修改当前 CPU 锁文件来临时试错。
 
 ### CUDA 检查为 `[FAIL]`
 

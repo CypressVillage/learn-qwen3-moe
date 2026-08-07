@@ -1,5 +1,8 @@
 # uv 与 PyTorch 双机环境设计
 
+> [!WARNING]
+> 此文档记录 2026-07-17 的历史方案，已由 [可安装 Dense 推理底座设计](../superpowers/specs/2026-08-07-installable-dense-foundation-design.md) 取代。当前权威环境说明是 [环境配置与多机器工作流](../environment.md)，当前锁文件使用 CPU PyTorch wheel。
+
 ## 目标
 
 为 RTX 4060 Laptop 8GB 和单张 A10 24GB 建立一套统一、可复现的 Python/PyTorch 学习环境。使用 `uv` 管理 Python、依赖和锁文件，同时导出传统 `requirements.txt` 供兼容工具使用。

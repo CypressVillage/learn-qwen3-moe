@@ -1,5 +1,7 @@
 # uv PyTorch Environment Implementation Plan
 
+> **Superseded:** This historical 2026-07-17 plan is replaced by the [installable Dense foundation design](../superpowers/specs/2026-08-07-installable-dense-foundation-design.md). Use [the current environment guide](../environment.md); the current lock uses the CPU PyTorch wheel.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Create a reproducible Python 3.11 PyTorch environment targeting RTX 4060 and A10 machines using uv, with a generated compatibility requirements file and a tested environment checker.

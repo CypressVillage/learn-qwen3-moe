@@ -37,7 +37,7 @@
 - 建立 `token_ids [B,S]`、`embedding_weight [V,D]`、`hidden [B,S,D]`、投影与输出的 shape ledger，写明 rank、每一维语义、`numel` 和 dtype。
 - 手算 FP32、FP16、BF16、INT8 与 packed INT4 内存，再用 PyTorch 的 `numel()`、`element_size()` 和可选 CUDA 指标做对照。
 - 观察并解释非法 reshape、非连续 `view`、广播或矩阵乘法不匹配等可控错误；奇数个 INT4 与非法 reshape/错误理解均作为教程练习，不作为正式测试。
-- 本周不创建正式 `src/` 模块或自动化测试；这些内容推迟到后续开始编写项目代码的实现阶段。
+- 本周以 shape ledger 和内存实验为主；这些记录为后续 `src/qwen3_moe/` 模块的输入、输出和内存契约提供依据。
 
 **实验**
 
@@ -69,7 +69,7 @@
 
 - 按完整教程在内联实验中，不依赖 `nn.Linear` 手写教学版线性层：`[B,S,Din] @ [Din,Dout] -> [B,S,Dout]`。
 - 实现 shape assertion，并保存/加载微型 `state_dict`；用断言验证状态恢复。
-- 用确定性实验和受控错误验证广播、矩阵乘法、模块状态及 dtype/device，不在本周新增正式 `src/` 模块或独立测试文件。
+- 用确定性实验和受控错误验证广播、矩阵乘法、模块状态及 dtype/device；这些约束随后由累计包和正式测试复用。
 
 **实验**
 
@@ -101,6 +101,7 @@
 - 用微型词表实现 Embedding 到 LM Head 的数据流。
 - 实现稳定 softmax 和 greedy next-token 选择。
 - 暂时用整数 token，不下载真实模型。
+- 保留可复用接口边界，为累计模型中的 embedding、LM Head 和后续 `sampling.py` 做准备。
 
 **实验**
 
@@ -132,6 +133,7 @@
 - 实现单头 attention，再扩展为多头与 GQA。
 - 显式实现 K/V 按组服务多个 query heads 的逻辑。
 - 对小张量写手算和参考实现测试。
+- 将规范 causal GQA 固化到 `src/qwen3_moe/attention.py`，回归测试位于 `tests/test_attention.py`。
 
 **实验**
 
@@ -163,6 +165,7 @@
 - 手写 RMSNorm、RoPE 频率与旋转函数、Q/K normalization。
 - 对奇偶通道、position offset、dtype 做显式检查。
 - 用微型张量和参考公式建立测试。
+- 将规范实现固化到 `src/qwen3_moe/norms.py` 和 `src/qwen3_moe/rope.py`。
 
 **实验**
 
@@ -194,6 +197,7 @@
 - 实现无 bias 的教学版 SwiGLU：`[B,S,D] -> [B,S,I] -> [B,S,D]`。
 - 编写维度不匹配和数值对齐测试。
 - 增加参数量与峰值中间激活估算。
+- 将规范实现固化到 `src/qwen3_moe/mlp.py`，供 Dense MLP 和未来 expert 共同复用。
 
 **实验**
 
@@ -225,6 +229,7 @@
 - 组合 RMSNorm、GQA、RoPE 和 SwiGLU 为 Dense Decoder Layer。
 - 组合微型 Dense Causal LM，并添加 causal mask。
 - 每个边界断言 shape、dtype 和 device。
+- 将累计实现固化到 `src/qwen3_moe/decoder.py` 和 `src/qwen3_moe/model.py`，通过 `examples/run_tiny_dense.py` 完成 CPU 端到端 forward。
 
 **实验**
 

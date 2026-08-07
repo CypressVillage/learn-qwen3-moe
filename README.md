@@ -43,10 +43,21 @@ learn-qwen3-moe/
 ├── .python-version                   # 项目 Python 3.11.15
 ├── uv.lock                           # uv 解析的精确依赖锁
 ├── requirements.txt                  # 生成的运行时兼容导出
+├── src/qwen3_moe/                    # 可安装、可复用的累计模型实现
+│   ├── config.py                     # 微型 Dense 模型配置与校验
+│   ├── norms.py                      # RMSNorm
+│   ├── rope.py                       # RoPE 频率与旋转
+│   ├── attention.py                  # Causal GQA
+│   ├── mlp.py                        # SwiGLU
+│   ├── decoder.py                    # Pre-norm Dense Decoder Layer
+│   └── model.py                      # Tiny Dense Causal LM
+├── examples/
+│   └── run_tiny_dense.py             # CPU 端到端 Dense forward
 ├── scripts/
 │   └── check_environment.py          # Python、PyTorch 与 CUDA 检查器
 ├── tests/
-│   └── test_check_environment.py     # 环境检查器测试
+│   ├── test_check_environment.py     # 环境检查器测试
+│   └── test_*.py                     # 累计模型模块与端到端测试
 ├── docs/
 │   ├── roadmap.md                    # 16 周逐周路线
 │   ├── environment.md                # 本地与服务器环境
@@ -56,20 +67,27 @@ learn-qwen3-moe/
 └── .gitignore                        # 本地环境、模型权重和输出忽略规则
 ```
 
-当前仓库已包含教学大纲、学习准备文档、第一至第七周教程和可复现的 PyTorch 环境；模型实现将在对应周次逐步创建。
+当前仓库已包含教学大纲、第一至第七周教程，以及从这些教程提取出的可安装 Dense 推理底座。后续每周的新组件必须进入 `src/qwen3_moe/` 并配套测试，逐步替换或扩展为 MoE 推理框架。
 
 ## 快速开始
 
-安装项目支持的 `uv 0.11.28` 后，在每次 clone 或 pull 后从仓库根目录执行：
+安装项目支持的 `uv >=0.11.28,<0.13` 后，在每次 clone 或 pull 后从仓库根目录执行：
 
 ```bash
 uv python install 3.11.15
 uv sync --locked --python 3.11.15
 uv run python scripts/check_environment.py
 uv run pytest
+uv run python examples/run_tiny_dense.py
 ```
 
-`pyproject.toml` 是手工维护的依赖来源，`uv.lock` 是精确锁文件，`requirements.txt` 只是为传统工具生成的兼容导出，绝不手工编辑。当前锁定环境为 Python 3.11.15、PyTorch 2.7.1（Linux wheel 报告 `2.7.1+cu126`）、NumPy 2.2.6 和 CUDA runtime 12.6。完整的驱动要求、代理示例、依赖更新流程和 CPU/GPU 排查见 [环境配置](docs/environment.md)。这些步骤不会下载模型。
+`pyproject.toml` 是手工维护的依赖来源，`uv.lock` 是精确锁文件，`requirements.txt` 只是为传统工具生成的兼容导出，绝不手工编辑。当前锁定基线为 Python 3.11.15、PyTorch `2.7.1+cpu` 和 NumPy 2.2.6，不要求 GPU。模型实现保持 device/dtype 无关；未来获得 GPU 后，应为目标 CUDA wheel 建立并验证独立运行 profile，而不是修改模型结构。完整说明见 [环境配置](docs/environment.md)。这些步骤不会下载模型。
+
+安装成功后可以直接导入累计模块：
+
+```python
+from qwen3_moe import DenseConfig, TinyDenseCausalLM
+```
 
 环境检查通过后开始第一周教程：
 

@@ -9,6 +9,10 @@ dependencies = [
     "torch==2.7.1",
 ]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [dependency-groups]
 dev = [
     "pytest>=8,<10",
@@ -19,5 +23,15 @@ addopts = "-q"
 testpaths = ["tests"]
 
 [tool.uv]
-package = false
-required-version = "==0.11.28"
+required-version = ">=0.11.28,<0.13"
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/qwen3_moe"]
