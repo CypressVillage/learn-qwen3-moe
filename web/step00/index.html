@@ -3,20 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Step 01：Qwen3 MoE 配置和 Safetensors 权重目录" />
-    <title>Step 01 | Qwen3 MoE 推理实验室</title>
+    <meta name="description" content="Step 00：从文本到 next token 的 Qwen3 MoE 完整推理地图" />
+    <title>Step 00 | Qwen3 MoE 推理实验室</title>
   </head>
   <body>
     <div id="root">
       <main>
         <article>
-          <h1>Step 01：配置和权重目录</h1>
-          <p>本课读取 config.json、Safetensors 分片目录和一个指定 tensor；完整模型 forward 尚不可用。</p>
+          <h1>Step 00：Qwen3 MoE 概览</h1>
+          <p>先建立 Tokenizer、Attention、Sparse MoE、LM Head、生成循环与 KV Cache 的整体认知。</p>
           <pre><code>文本 -&gt; token IDs -&gt; Qwen3 MoE Transformer -&gt; logits -&gt; next token</code></pre>
         </article>
       </main>
     </div>
-    <noscript>请直接阅读 lessons/step01-overview-config-weights.md。</noscript>
+    <noscript>请直接阅读 lessons/step00-inference-map.md。</noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

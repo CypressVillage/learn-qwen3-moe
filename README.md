@@ -10,8 +10,10 @@
 
 ## 当前内容
 
-Step 01 完成配置读取和 Safetensors 权重目录检查：
+Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置读取和 Safetensors 权重目录检查：
 
+- `lessons/step00-inference-map.md`
+- `lessons/checkpoints/step00.json`
 - `src/qwen3_moe/config.py`
 - `src/qwen3_moe/checkpoint.py`
 - `lessons/step01-overview-config-weights.md`
@@ -28,6 +30,7 @@ Step 01 完成配置读取和 Safetensors 权重目录检查：
 
 ```bash
 uv sync --locked --python 3.11.15
+uv run python scripts/generate_step00_assets.py
 uv run python scripts/generate_step01_assets.py
 uv run python scripts/validate_course_assets.py
 

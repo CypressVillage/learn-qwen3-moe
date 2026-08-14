@@ -1,4 +1,4 @@
-"""Validate links between the Step 01 lesson and source checkpoints."""
+"""Validate lesson links and cumulative source checkpoints."""
 
 import json
 import re
@@ -18,19 +18,17 @@ def _is_line_subsequence(earlier: str, later: str) -> bool:
     return expected is None
 
 
-def main() -> None:
-    checkpoint_document = json.loads(
-        (ROOT / "lessons" / "checkpoints" / "step01.json").read_text(
-            encoding="utf-8"
-        )
-    )
+def _validate_step(checkpoint_path: Path, require_current_source: bool) -> int:
+    checkpoint_document = json.loads(checkpoint_path.read_text(encoding="utf-8"))
     checkpoints = checkpoint_document["checkpoints"]
+    step = checkpoint_path.stem
     checkpoint_ids: set[str] = set()
     checkpoint_order: list[str] = []
     previous_files: dict[str, str] | None = None
 
     for checkpoint in checkpoints:
         checkpoint_id = checkpoint["id"]
+        assert checkpoint["step"] == step
         assert checkpoint_id not in checkpoint_ids, f"duplicate checkpoint: {checkpoint_id}"
         checkpoint_ids.add(checkpoint_id)
         checkpoint_order.append(checkpoint_id)
@@ -38,7 +36,10 @@ def main() -> None:
             item["path"]: item["content"]
             for item in checkpoint["repository_snapshot"]["files"]
         }
-        assert checkpoint["active_file"] in files
+        if files:
+            assert checkpoint["active_file"] in files
+        else:
+            assert checkpoint["active_file"] == ""
         for relative_path, snapshot in files.items():
             path = Path(relative_path)
             assert not path.is_absolute() and ".." not in path.parts
@@ -47,17 +48,21 @@ def main() -> None:
                 f"checkpoint {checkpoint_id} is not a line-preserving subset of {relative_path}"
             )
         if previous_files is not None:
-            assert files.keys() == previous_files.keys()
+            assert previous_files.keys() <= files.keys(), (
+                f"checkpoint {checkpoint_id} removes files"
+            )
             for relative_path, previous_snapshot in previous_files.items():
                 assert _is_line_subsequence(previous_snapshot, files[relative_path]), (
                     f"checkpoint {checkpoint_id} removes or rewrites lines in {relative_path}"
                 )
         previous_files = files
         focus = checkpoint["focus_range"]
-        lines = files[checkpoint["active_file"]].splitlines()
+        active_file = checkpoint["active_file"]
+        lines = files[active_file].splitlines() if active_file else []
         if focus["start"] == 0:
             assert focus == {"start": 0, "end": 0, "symbol": ""}
-            assert files[checkpoint["active_file"]] == ""
+            if active_file:
+                assert files[active_file] == ""
         else:
             assert 1 <= focus["start"] <= focus["end"] <= len(lines)
             assert focus["symbol"].split(".")[-1] in "\n".join(
@@ -65,16 +70,27 @@ def main() -> None:
             )
 
     assert previous_files is not None
-    for relative_path, snapshot in previous_files.items():
-        assert (ROOT / relative_path).read_text(encoding="utf-8") == snapshot, (
-            f"final checkpoint is stale: {relative_path}"
-        )
+    if require_current_source:
+        for relative_path, snapshot in previous_files.items():
+            assert (ROOT / relative_path).read_text(encoding="utf-8") == snapshot, (
+                f"final checkpoint is stale: {relative_path}"
+            )
 
-    lesson = (ROOT / "lessons" / "step01-overview-config-weights.md").read_text(
-        encoding="utf-8"
-    )
+    lesson_paths = sorted((ROOT / "lessons").glob(f"{step}-*.md"))
+    assert len(lesson_paths) == 1, f"expected one lesson for {step}"
+    lesson = lesson_paths[0].read_text(encoding="utf-8")
     assert CHECKPOINT_REF.findall(lesson) == checkpoint_order
-    print(f"validated {len(checkpoint_ids)} checkpoints and Step 01 lesson links")
+    return len(checkpoint_ids)
+
+
+def main() -> None:
+    checkpoint_paths = sorted((ROOT / "lessons" / "checkpoints").glob("step*.json"))
+    assert checkpoint_paths, "no course checkpoints found"
+    total = sum(
+        _validate_step(path, require_current_source=path == checkpoint_paths[-1])
+        for path in checkpoint_paths
+    )
+    print(f"validated {total} checkpoints across {len(checkpoint_paths)} lessons")
 
 
 if __name__ == "__main__":

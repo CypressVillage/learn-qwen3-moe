@@ -10,6 +10,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(import.meta.dirname, "index.html"),
+        step00: resolve(import.meta.dirname, "step00/index.html"),
         step01: resolve(import.meta.dirname, "step01/index.html"),
       },
     },

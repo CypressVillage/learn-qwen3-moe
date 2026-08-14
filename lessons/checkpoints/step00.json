@@ -1,0 +1,581 @@
+{
+  "checkpoints": [
+    {
+      "active_file": "",
+      "diff": {
+        "files": [],
+        "kind": "initial"
+      },
+      "focus_range": {
+        "end": 0,
+        "start": 0,
+        "symbol": ""
+      },
+      "id": "step00-empty-repository",
+      "label": "从空仓库开始认识推理工程",
+      "repository_snapshot": {
+        "files": []
+      },
+      "step": "step00"
+    },
+    {
+      "active_file": "src/qwen3_moe/config.py",
+      "diff": {
+        "files": [
+          "src/qwen3_moe/config.py"
+        ],
+        "kind": "insert"
+      },
+      "focus_range": {
+        "end": 0,
+        "start": 0,
+        "symbol": ""
+      },
+      "id": "step00-config",
+      "label": "建立模型配置边界",
+      "repository_snapshot": {
+        "files": [
+          {
+            "content": "",
+            "path": "src/qwen3_moe/config.py"
+          }
+        ]
+      },
+      "step": "step00"
+    },
+    {
+      "active_file": "src/qwen3_moe/checkpoint.py",
+      "diff": {
+        "files": [
+          "src/qwen3_moe/checkpoint.py"
+        ],
+        "kind": "insert"
+      },
+      "focus_range": {
+        "end": 0,
+        "start": 0,
+        "symbol": ""
+      },
+      "id": "step00-checkpoint",
+      "label": "建立权重读取边界",
+      "repository_snapshot": {
+        "files": [
+          {
+            "content": "",
+            "path": "src/qwen3_moe/config.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/checkpoint.py"
+          }
+        ]
+      },
+      "step": "step00"
+    },
+    {
+      "active_file": "src/qwen3_moe/tokenizer.py",
+      "diff": {
+        "files": [
+          "src/qwen3_moe/tokenizer.py"
+        ],
+        "kind": "insert"
+      },
+      "focus_range": {
+        "end": 0,
+        "start": 0,
+        "symbol": ""
+      },
+      "id": "step00-tokenizer",
+      "label": "建立文本与 token IDs 边界",
+      "repository_snapshot": {
+        "files": [
+          {
+            "content": "",
+            "path": "src/qwen3_moe/config.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/tokenizer.py"
+          }
+        ]
+      },
+      "step": "step00"
+    },
+    {
+      "active_file": "src/qwen3_moe/layers.py",
+      "diff": {
+        "files": [
+          "src/qwen3_moe/layers.py"
+        ],
+        "kind": "insert"
+      },
+      "focus_range": {
+        "end": 0,
+        "start": 0,
+        "symbol": ""
+      },
+      "id": "step00-layers",
+      "label": "建立基础张量层边界",
+      "repository_snapshot": {
+        "files": [
+          {
+            "content": "",
+            "path": "src/qwen3_moe/config.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/tokenizer.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/layers.py"
+          }
+        ]
+      },
+      "step": "step00"
+    },
+    {
+      "active_file": "src/qwen3_moe/rope.py",
+      "diff": {
+        "files": [
+          "src/qwen3_moe/rope.py"
+        ],
+        "kind": "insert"
+      },
+      "focus_range": {
+        "end": 0,
+        "start": 0,
+        "symbol": ""
+      },
+      "id": "step00-rope",
+      "label": "建立旋转位置编码边界",
+      "repository_snapshot": {
+        "files": [
+          {
+            "content": "",
+            "path": "src/qwen3_moe/config.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/tokenizer.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/layers.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/rope.py"
+          }
+        ]
+      },
+      "step": "step00"
+    },
+    {
+      "active_file": "src/qwen3_moe/attention.py",
+      "diff": {
+        "files": [
+          "src/qwen3_moe/attention.py"
+        ],
+        "kind": "insert"
+      },
+      "focus_range": {
+        "end": 0,
+        "start": 0,
+        "symbol": ""
+      },
+      "id": "step00-attention",
+      "label": "建立 Attention 边界",
+      "repository_snapshot": {
+        "files": [
+          {
+            "content": "",
+            "path": "src/qwen3_moe/config.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/tokenizer.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/layers.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/rope.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/attention.py"
+          }
+        ]
+      },
+      "step": "step00"
+    },
+    {
+      "active_file": "src/qwen3_moe/moe.py",
+      "diff": {
+        "files": [
+          "src/qwen3_moe/moe.py"
+        ],
+        "kind": "insert"
+      },
+      "focus_range": {
+        "end": 0,
+        "start": 0,
+        "symbol": ""
+      },
+      "id": "step00-moe",
+      "label": "建立稀疏 MoE 边界",
+      "repository_snapshot": {
+        "files": [
+          {
+            "content": "",
+            "path": "src/qwen3_moe/config.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/tokenizer.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/layers.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/rope.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/attention.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/moe.py"
+          }
+        ]
+      },
+      "step": "step00"
+    },
+    {
+      "active_file": "src/qwen3_moe/cache.py",
+      "diff": {
+        "files": [
+          "src/qwen3_moe/cache.py"
+        ],
+        "kind": "insert"
+      },
+      "focus_range": {
+        "end": 0,
+        "start": 0,
+        "symbol": ""
+      },
+      "id": "step00-cache",
+      "label": "建立 KV Cache 边界",
+      "repository_snapshot": {
+        "files": [
+          {
+            "content": "",
+            "path": "src/qwen3_moe/config.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/tokenizer.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/layers.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/rope.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/attention.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/moe.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/cache.py"
+          }
+        ]
+      },
+      "step": "step00"
+    },
+    {
+      "active_file": "src/qwen3_moe/model.py",
+      "diff": {
+        "files": [
+          "src/qwen3_moe/model.py"
+        ],
+        "kind": "insert"
+      },
+      "focus_range": {
+        "end": 0,
+        "start": 0,
+        "symbol": ""
+      },
+      "id": "step00-model",
+      "label": "建立完整模型组装边界",
+      "repository_snapshot": {
+        "files": [
+          {
+            "content": "",
+            "path": "src/qwen3_moe/config.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/tokenizer.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/layers.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/rope.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/attention.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/moe.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/cache.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/model.py"
+          }
+        ]
+      },
+      "step": "step00"
+    },
+    {
+      "active_file": "src/qwen3_moe/generation.py",
+      "diff": {
+        "files": [
+          "src/qwen3_moe/generation.py"
+        ],
+        "kind": "insert"
+      },
+      "focus_range": {
+        "end": 0,
+        "start": 0,
+        "symbol": ""
+      },
+      "id": "step00-generation",
+      "label": "建立自回归生成边界",
+      "repository_snapshot": {
+        "files": [
+          {
+            "content": "",
+            "path": "src/qwen3_moe/config.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/tokenizer.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/layers.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/rope.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/attention.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/moe.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/cache.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/model.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/generation.py"
+          }
+        ]
+      },
+      "step": "step00"
+    },
+    {
+      "active_file": "src/qwen3_moe/__init__.py",
+      "diff": {
+        "files": [
+          "src/qwen3_moe/__init__.py"
+        ],
+        "kind": "insert"
+      },
+      "focus_range": {
+        "end": 0,
+        "start": 0,
+        "symbol": ""
+      },
+      "id": "step00-package",
+      "label": "建立包公共入口",
+      "repository_snapshot": {
+        "files": [
+          {
+            "content": "",
+            "path": "src/qwen3_moe/config.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/tokenizer.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/layers.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/rope.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/attention.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/moe.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/cache.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/model.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/generation.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/__init__.py"
+          }
+        ]
+      },
+      "step": "step00"
+    },
+    {
+      "active_file": "src/qwen3_moe/model.py",
+      "diff": {
+        "files": [],
+        "kind": "context"
+      },
+      "focus_range": {
+        "end": 0,
+        "start": 0,
+        "symbol": ""
+      },
+      "id": "step00-module-flow",
+      "label": "把模块连接成完整推理数据流",
+      "repository_snapshot": {
+        "files": [
+          {
+            "content": "",
+            "path": "src/qwen3_moe/config.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/tokenizer.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/layers.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/rope.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/attention.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/moe.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/cache.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/model.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/generation.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/__init__.py"
+          }
+        ]
+      },
+      "step": "step00"
+    }
+  ],
+  "schema_version": 1
+}

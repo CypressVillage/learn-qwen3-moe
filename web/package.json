@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "marked": "^16.1.2",
+    "prismjs": "^1.30.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },

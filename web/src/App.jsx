@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import Prism from "prismjs";
+import "prismjs/components/prism-python";
 
 import content from "./generated/content.json";
 import {
@@ -8,36 +10,41 @@ import {
 } from "./checkpoint-progress.js";
 
 
-const checkpoints = content.checkpoints;
+const stepPresentation = {
+  step00: {
+    number: "00",
+    progress: 0,
+    label: "QWEN3 MOE OVERVIEW",
+    title: "Qwen3 MoE 概览",
+    summary: "完整推理地图与源码骨架",
+    labLabel: "Step 00 架构地图实验台",
+    kicker: "ORIENTATION",
+    duration: "约 30 分钟 · CPU ONLY",
+  },
+  step01: {
+    number: "01",
+    progress: 7.14,
+    label: "CONFIG + WEIGHTS",
+    title: "配置与权重目录",
+    summary: "读取模型配置与 Safetensors 索引",
+    labLabel: "Step 01 实验台",
+    kicker: "FOUNDATION",
+    duration: "约 45 分钟 · CPU ONLY",
+  },
+};
+
+const savedTheme = window.localStorage.getItem("qwen3-moe-theme");
+const initialTheme = savedTheme === "light" || savedTheme === "dark"
+  ? savedTheme
+  : window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+document.documentElement.dataset.theme = initialTheme;
+document.documentElement.style.colorScheme = initialTheme;
 
 function Pill({ children, tone = "neutral" }) {
   return <span className={`pill pill-${tone}`}>{children}</span>;
 }
 
-function FlowMap() {
-  const stages = [
-    ["CONFIG", "ready"],
-    ["WEIGHTS", "ready"],
-    ["TOKENIZER", "waiting"],
-    ["MODEL", "waiting"],
-    ["LOGITS", "waiting"],
-    ["GENERATE", "waiting"],
-  ];
-  return (
-    <div className="flow-map" aria-label="完整推理数据流">
-      {stages.map(([label, status], index) => (
-        <div className="flow-stage" key={label}>
-          <span className={`status-dot ${status}`} />
-          <span>{String(index + 1).padStart(2, "0")}</span>
-          <strong>{label}</strong>
-          <small>{status === "ready" ? "ONLINE" : "LOCKED"}</small>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function useReadingCheckpoint() {
+function useReadingCheckpoint(checkpoints) {
   const [checkpointIndex, setCheckpointIndex] = useState(0);
 
   useEffect(() => {
@@ -67,12 +74,89 @@ function useReadingCheckpoint() {
       window.removeEventListener("scroll", scheduleUpdate);
       window.removeEventListener("resize", scheduleUpdate);
     };
-  }, []);
+  }, [checkpoints]);
 
   return checkpointIndex;
 }
 
-function RepositoryView({ checkpoint, previousCheckpoint }) {
+function buildFileTree(files) {
+  const root = { directories: new Map(), files: [] };
+
+  files.forEach((file) => {
+    const parts = file.path.split("/");
+    const fileName = parts.pop();
+    let directory = root;
+
+    parts.forEach((part) => {
+      if (!directory.directories.has(part)) {
+        directory.directories.set(part, { directories: new Map(), files: [] });
+      }
+      directory = directory.directories.get(part);
+    });
+    directory.files.push({ ...file, name: fileName });
+  });
+
+  return root;
+}
+
+function FileTreeLevel({ node, activePath, previousPaths, onSelect }) {
+  return (
+    <ul>
+      {[...node.directories.entries()].map(([name, child]) => (
+        <li className="tree-directory" key={name}>
+          <details open>
+            <summary><span className="tree-chevron">›</span><span className="folder-icon" />{name}</summary>
+            <FileTreeLevel node={child} activePath={activePath} previousPaths={previousPaths} onSelect={onSelect} />
+          </details>
+        </li>
+      ))}
+      {node.files.map((item) => (
+        <li key={item.path}>
+          <button
+            className={`tree-file ${item.path === activePath ? "active" : ""} ${!previousPaths.has(item.path) ? "new" : ""}`}
+            onClick={() => onSelect(item.path)}
+            title={item.path}
+          >
+            <span className={item.content ? "file-icon ready" : "file-icon created"}>PY</span>
+            <span>{item.name}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function highlightedPythonLines(source) {
+  const lines = [[]];
+
+  function appendText(text, classes) {
+    text.split("\n").forEach((part, index) => {
+      if (index > 0) lines.push([]);
+      if (part) lines.at(-1).push({ text: part, classes });
+    });
+  }
+
+  function visit(value, inheritedClasses = []) {
+    if (typeof value === "string") {
+      appendText(value, inheritedClasses);
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item) => visit(item, inheritedClasses));
+      return;
+    }
+
+    const aliases = Array.isArray(value.alias)
+      ? value.alias
+      : value.alias ? [value.alias] : [];
+    visit(value.content, [...inheritedClasses, "token", value.type, ...aliases]);
+  }
+
+  visit(Prism.tokenize(source, Prism.languages.python));
+  return lines;
+}
+
+function RepositoryView({ checkpoint, previousCheckpoint, checkpointIndex, checkpointCount }) {
   const [filePath, setFilePath] = useState(checkpoint.active_file);
   const codePanelRef = useRef(null);
 
@@ -93,73 +177,86 @@ function RepositoryView({ checkpoint, previousCheckpoint }) {
     }
   }, [checkpoint.id, filePath]);
 
-  const file = checkpoint.repository_snapshot.files.find((item) => item.path === filePath);
+  const files = checkpoint.repository_snapshot.files;
+  const file = files.find((item) => item.path === filePath) ?? files[0];
   const previousFile = previousCheckpoint?.repository_snapshot.files.find(
-    (item) => item.path === filePath,
+    (item) => item.path === file?.path,
   );
-  const lines = file.content
+  const previousPaths = new Set(
+    previousCheckpoint?.repository_snapshot.files.map((item) => item.path) ?? [],
+  );
+  const fileTree = buildFileTree(files);
+  const lines = file?.content
     ? (file.content.endsWith("\n") ? file.content.slice(0, -1) : file.content).split("\n")
     : [];
-  const addedLines = new Set(addedLineIndexes(previousFile?.content ?? "", file.content));
+  const highlightedLines = file?.content
+    ? highlightedPythonLines(file.content.endsWith("\n") ? file.content.slice(0, -1) : file.content)
+    : [];
+  const addedLines = new Set(addedLineIndexes(previousFile?.content ?? "", file?.content ?? ""));
 
   return (
     <div className="repo-view">
-      <div className="file-list" aria-label="累计 checkpoint 文件">
-        {checkpoint.repository_snapshot.files.map((item) => (
-          <button
-            className={item.path === filePath ? "active" : ""}
-            key={item.path}
-            onClick={() => setFilePath(item.path)}
-          >
-            <span className={item.content ? "file-dot ready" : "file-dot"} />
-            {item.path}
-          </button>
-        ))}
-      </div>
-      <div className="code-header">
-        <span>{file.path}</span>
-        <div>
-          {file.path === checkpoint.active_file && <Pill tone="token">FOCUS</Pill>}
-          <span className="line-count">{lines.length} LINES</span>
+      <nav className="file-tree" aria-label="累计 checkpoint 文件树">
+        <div className="file-tree-header"><span>EXPLORER</span><small>{files.length} FILES</small></div>
+        <div className="file-tree-body">
+          {files.length === 0
+            ? <span className="empty-tree">EMPTY REPOSITORY</span>
+            : <FileTreeLevel node={fileTree} activePath={file?.path} previousPaths={previousPaths} onSelect={setFilePath} />}
         </div>
+      </nav>
+      <div className="code-view">
+        <div className="code-header">
+          <span>{file?.path ?? "NO FILE SELECTED"}</span>
+          <div>
+            {file?.path === checkpoint.active_file && <Pill tone="token">FOCUS</Pill>}
+            <span className="line-count">{lines.length} LINES</span>
+          </div>
+        </div>
+        <pre className={`code-panel ${lines.length === 0 ? "empty" : ""}`} ref={codePanelRef} tabIndex="0" aria-label={file ? `${file.path} 源码` : "空仓库"} aria-live="polite">
+          {lines.length === 0 ? (
+            <span className="empty-file">
+              <i>{file ? "EMPTY FILE" : "EMPTY REPOSITORY"}</i>
+              <strong>{file ? (checkpoint.step === "step00" ? "本章只建立模块边界，代码从后续章节开始出现。" : "继续阅读，代码会在这里逐步出现。") : "向下阅读，推理模块会在这里逐个建立。"}</strong>
+              <small>Checkpoint {String(checkpointIndex + 1).padStart(2, "0")} / {String(checkpointCount).padStart(2, "0")}</small>
+            </span>
+          ) : (
+            <code key={`${checkpoint.id}-${file.path}`}>
+              {lines.map((line, index) => {
+                const number = index + 1;
+                const focused =
+                  file.path === checkpoint.active_file
+                  && checkpoint.focus_range.start > 0
+                  && number >= checkpoint.focus_range.start
+                  && number <= checkpoint.focus_range.end;
+                const added = addedLines.has(index);
+                return (
+                  <span
+                    className={`code-line ${focused ? "focused" : ""} ${added ? "added" : ""}`}
+                    key={`${number}-${line}`}
+                    style={added ? { animationDelay: `${Math.min(index, 30) * 12}ms` } : undefined}
+                  >
+                    <i>{String(number).padStart(3, "0")}</i>
+                    {highlightedLines[index]?.length
+                      ? highlightedLines[index].map((segment, segmentIndex) => (
+                        segment.classes.length > 0
+                          ? <span className={segment.classes.join(" ")} key={`${segmentIndex}-${segment.text}`}>{segment.text}</span>
+                          : segment.text
+                      ))
+                      : " "}
+                  </span>
+                );
+              })}
+            </code>
+          )}
+        </pre>
       </div>
-      <pre className={`code-panel ${lines.length === 0 ? "empty" : ""}`} ref={codePanelRef} tabIndex="0" aria-label={`${file.path} 源码`} aria-live="polite">
-        {lines.length === 0 ? (
-          <span className="empty-file">
-            <i>EMPTY FILE</i>
-            <strong>继续阅读，代码会在这里逐步出现。</strong>
-            <small>Checkpoint {String(checkpoints.indexOf(checkpoint) + 1).padStart(2, "0")} / {String(checkpoints.length).padStart(2, "0")}</small>
-          </span>
-        ) : (
-          <code key={`${checkpoint.id}-${file.path}`}>
-            {lines.map((line, index) => {
-              const number = index + 1;
-              const focused =
-                file.path === checkpoint.active_file
-                && checkpoint.focus_range.start > 0
-                && number >= checkpoint.focus_range.start
-                && number <= checkpoint.focus_range.end;
-              const added = addedLines.has(index);
-              return (
-                <span
-                  className={`code-line ${focused ? "focused" : ""} ${added ? "added" : ""}`}
-                  key={`${number}-${line}`}
-                  style={added ? { animationDelay: `${Math.min(index, 30) * 12}ms` } : undefined}
-                >
-                  <i>{String(number).padStart(3, "0")}</i>{line || " "}
-                </span>
-              );
-            })}
-          </code>
-        )}
-      </pre>
     </div>
   );
 }
 
-function Lab({ checkpoint, previousCheckpoint, checkpointIndex, pinned, togglePinned, moveCheckpoint, mobileClose }) {
+function Lab({ checkpoint, previousCheckpoint, checkpointIndex, checkpoints, labLabel, pinned, togglePinned, moveCheckpoint, mobileClose }) {
   return (
-    <aside className="lab" aria-label="Step 01 实验台">
+    <aside className="lab" aria-label={labLabel}>
       <header className="lab-header">
         <div className="checkpoint-heading">
           <span>SCROLL-LINKED CHECKPOINT</span>
@@ -177,7 +274,7 @@ function Lab({ checkpoint, previousCheckpoint, checkpointIndex, pinned, togglePi
         </div>
       </header>
       <div className="lab-body">
-        <RepositoryView checkpoint={checkpoint} previousCheckpoint={previousCheckpoint} />
+        <RepositoryView checkpoint={checkpoint} previousCheckpoint={previousCheckpoint} checkpointIndex={checkpointIndex} checkpointCount={checkpoints.length} />
       </div>
       <footer className="lab-footer"><span>SOURCE CHECKPOINT</span><span>←/→ STEP · ESC UNLOCK</span><span>INSERT-ONLY SNAPSHOTS</span></footer>
     </aside>
@@ -185,12 +282,42 @@ function Lab({ checkpoint, previousCheckpoint, checkpointIndex, pinned, togglePi
 }
 
 export function App() {
-  const readingCheckpointIndex = useReadingCheckpoint();
+  const requestedStep = window.location.pathname.startsWith("/step01") ? "step01" : "step00";
+  const step = content.steps.find((item) => item.id === requestedStep) ?? content.steps[0];
+  const presentation = stepPresentation[step.id];
+  const checkpoints = step.checkpoints;
+  const readingCheckpointIndex = useReadingCheckpoint(checkpoints);
   const [pinnedCheckpointIndex, setPinnedCheckpointIndex] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [courseNavOpen, setCourseNavOpen] = useState(false);
+  const [theme, setTheme] = useState(initialTheme);
+  const courseNavRef = useRef(null);
   const checkpointIndex = pinnedCheckpointIndex ?? readingCheckpointIndex;
   const checkpoint = checkpoints[checkpointIndex];
   const previousCheckpoint = checkpointIndex > 0 ? checkpoints[checkpointIndex - 1] : null;
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    window.localStorage.setItem("qwen3-moe-theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    if (!courseNavOpen) return undefined;
+
+    const closeCourseNav = (event) => {
+      if (event.key === "Escape" || !courseNavRef.current?.contains(event.target)) {
+        setCourseNavOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeCourseNav);
+    document.addEventListener("keydown", closeCourseNav);
+    return () => {
+      document.removeEventListener("pointerdown", closeCourseNav);
+      document.removeEventListener("keydown", closeCourseNav);
+    };
+  }, [courseNavOpen]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -242,6 +369,8 @@ export function App() {
     checkpoint,
     previousCheckpoint,
     checkpointIndex,
+    checkpoints,
+    labLabel: presentation.labLabel,
     pinned: pinnedCheckpointIndex !== null,
     togglePinned,
     moveCheckpoint,
@@ -250,17 +379,51 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="/step01/"><span>Q3</span><strong>MOE INFERENCE LAB</strong></a>
-        <div className="course-progress"><span>STEP 01 / 14</span><div><i /></div><b>CONFIG + WEIGHTS</b></div>
-        <a className="source-button" href="https://github.com/CypressVillage/learn-qwen3-moe" aria-label="查看仓库源码">SOURCE ↗</a>
+        <a className="brand" href="/"><span>Q3</span><strong>MOE INFERENCE LAB</strong></a>
+        <div className="course-nav" ref={courseNavRef}>
+          <button className="course-progress" onClick={() => setCourseNavOpen((open) => !open)} aria-expanded={courseNavOpen} aria-haspopup="true">
+            <span>STEP {presentation.number} / 14</span>
+            <div><i style={{ width: `${presentation.progress}%` }} /></div>
+            <b>{presentation.label}</b>
+            <small aria-hidden="true">⌄</small>
+          </button>
+          {courseNavOpen && (
+            <nav className="course-menu" aria-label="课程 Step 导航">
+              <header><span>COURSE STEPS</span><small>选择章节</small></header>
+              {content.steps.map((courseStep) => {
+                const item = stepPresentation[courseStep.id];
+                const current = courseStep.id === step.id;
+                return (
+                  <a className={current ? "current" : ""} href={`/${courseStep.id}/`} aria-current={current ? "page" : undefined} key={courseStep.id}>
+                    <span>{item.number}</span>
+                    <div><strong>{item.title}</strong><small>{item.summary}</small></div>
+                    <b>{current ? "CURRENT" : "OPEN"}</b>
+                  </a>
+                );
+              })}
+              <div className="course-next"><span>NEXT</span><strong>STEP 02 · TOKENIZER</strong><small>COMING SOON</small></div>
+            </nav>
+          )}
+        </div>
+        <div className="topbar-actions">
+          <button
+            className="theme-button"
+            onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+            aria-label={`切换到${theme === "dark" ? "浅色" : "深色"}模式`}
+            title={`切换到${theme === "dark" ? "浅色" : "深色"}模式`}
+          >
+            <span aria-hidden="true">{theme === "dark" ? "☀" : "◐"}</span>
+            {theme === "dark" ? "LIGHT" : "DARK"}
+          </button>
+          <a className="source-button" href="https://github.com/CypressVillage/learn-qwen3-moe" aria-label="查看仓库源码">SOURCE ↗</a>
+        </div>
       </header>
       <main className="workspace">
-        <article className="lesson-pane">
-          <div className="lesson-kicker"><Pill tone="token">FOUNDATION</Pill><span>约 45 分钟 · CPU ONLY</span></div>
-          <FlowMap />
-          <div className="lesson-content" dangerouslySetInnerHTML={{ __html: content.lesson.html }} />
-        </article>
         <Lab {...labProps} />
+        <article className="lesson-pane">
+          <div className="lesson-kicker"><Pill tone="token">{presentation.kicker}</Pill><span>{presentation.duration}</span></div>
+          <div className="lesson-content" dangerouslySetInnerHTML={{ __html: step.lesson.html }} />
+        </article>
       </main>
       <nav className="mobile-dock" aria-label="移动端实验台入口">
         <button onClick={openMobile}>查看源码</button>

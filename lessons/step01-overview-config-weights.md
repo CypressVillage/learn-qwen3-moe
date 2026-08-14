@@ -1,12 +1,12 @@
-# Step 01：<span class="title-unit">推理全景</span>、配置和权重目录
+# Step 01：<span class="title-unit">配置</span>和权重目录
 
 <!-- checkpoint: step01-empty-workspace -->
 
-这一课先不计算 Attention，也不假装模型已经能够生成文本。目标是建立一张不会随章节推进而改变的整机地图，并完成最靠近磁盘的两个真实边界：读取架构配置，以及检查 Safetensors 权重目录。
+Step 00 已经画出从文本到 next token 的完整推理地图。这一课先不计算 Attention，也不假装模型已经能够生成文本，只完成最靠近磁盘的两个真实边界：读取架构配置，以及检查 Safetensors 权重目录。
 
 ## 1. 当前走到哪里
 
-完整的 decoder-only LLM 生成控制流是：
+回到 Step 00 的完整控制流：
 
 ```text
 文本 prompt
@@ -23,7 +23,7 @@
 
 一次 `forward()` 只负责从 token IDs 得到 logits。Tokenizer、next-token 选择、停止条件和生成循环都位于模型调用边界之外；KV Cache 则连接相邻两次模型调用，避免重复计算已经处理过的历史 token。
 
-本课只点亮最左侧之前的“装机检查”：
+本课只点亮 token 进入模型之前的“装机检查”：
 
 ```text
 [config.json 已可读] + [权重目录已可检查]
@@ -33,7 +33,7 @@
      -> [logits 不可用] -> [生成循环不可用]
 ```
 
-## 2. 当前缺少什么能力
+## 2. 地图上还有什么能力未完成
 
 下载或拿到一个 checkpoint 目录，并不等于模型已经装配完成。完整推理至少还缺少：
 
@@ -182,4 +182,4 @@ expected = np.arange(16, dtype=np.float32).reshape(4, 4) / 10.0
 
 这里的逐元素对照验证的是：读取器对 payload bytes 的 dtype 解释、元素数量和 reshape 都正确。它不验证模型数学，也不代表权重已经能装入完整 Transformer。
 
-下一步自然进入 Tokenizer：权重目录已经可检查，但模型真正接收的是整数 token IDs。Step 02 将从文本、UTF-8 bytes 和 BPE 资源出发，建立可与目标 tokenizer 对齐的 encode/decode 边界。
+下一步自然进入 Tokenizer：权重目录已经可检查，但模型真正接收的是整数 token IDs。Step 02 将从文本、UTF-8 bytes 和 BPE 资源出发，建立可与目标 tokenizer 对齐的 encode/decode 边界。需要重新确认全局位置时，回到 [Step 00 完整推理地图](/step00/)。

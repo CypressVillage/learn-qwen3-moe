@@ -7,14 +7,19 @@ import { marked } from "marked";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../..");
-const lessonPath = resolve(root, "lessons/step01-overview-config-weights.md");
-const checkpointPath = resolve(root, "lessons/checkpoints/step01.json");
 const outputPath = resolve(here, "../src/generated/content.json");
-
-const [markdown, checkpointText] = await Promise.all([
-  readFile(lessonPath, "utf8"),
-  readFile(checkpointPath, "utf8"),
-]);
+const stepSources = [
+  {
+    id: "step00",
+    lessonPath: "lessons/step00-inference-map.md",
+    checkpointPath: "lessons/checkpoints/step00.json",
+  },
+  {
+    id: "step01",
+    lessonPath: "lessons/step01-overview-config-weights.md",
+    checkpointPath: "lessons/checkpoints/step01.json",
+  },
+];
 
 marked.use({
   gfm: true,
@@ -32,20 +37,26 @@ marked.use({
   },
 });
 
-const markdownWithAnchors = markdown
-  .replace(
+const steps = await Promise.all(stepSources.map(async (source) => {
+  const [markdown, checkpointText] = await Promise.all([
+    readFile(resolve(root, source.lessonPath), "utf8"),
+    readFile(resolve(root, source.checkpointPath), "utf8"),
+  ]);
+  const markdownWithAnchors = markdown.replace(
     /<!-- checkpoint: ([a-z0-9-]+) -->/g,
     '<div class="checkpoint-anchor" data-checkpoint="$1" aria-hidden="true"></div>',
   );
-const data = {
-  lesson: {
-    path: "lessons/step01-overview-config-weights.md",
-    markdown,
-    html: await marked.parse(markdownWithAnchors),
-  },
-  checkpoints: JSON.parse(checkpointText).checkpoints,
-};
+  return {
+    id: source.id,
+    lesson: {
+      path: source.lessonPath,
+      markdown,
+      html: await marked.parse(markdownWithAnchors),
+    },
+    checkpoints: JSON.parse(checkpointText).checkpoints,
+  };
+}));
 
 await mkdir(dirname(outputPath), { recursive: true });
-await writeFile(outputPath, `${JSON.stringify(data)}\n`, "utf8");
-console.log("synced Step 01 lesson and checkpoints");
+await writeFile(outputPath, `${JSON.stringify({ steps })}\n`, "utf8");
+console.log(`synced ${steps.length} course lessons`);
