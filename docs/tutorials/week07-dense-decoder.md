@@ -1,5 +1,11 @@
 # 第七周教程：完整 Dense Decoder
 
+> **深入实验导航**
+> - **主线位置：** [第 02 章：Decoder Layer](../course/02-decoder-layer.md)与[第 06 章：组装 Dense 模型](../course/06-assemble-dense-model.md)，深入 pre-norm residual contract、层堆叠和逐层调试。
+> - **建议何时读：** 先完成主线第 02-05 章，在第 06 章组装并验证完整 Dense forward 时阅读；首次可跳过重复手写组件、长篇参考答案和扩展实验。
+> - **源码与测试：** [`decoder.py::DenseDecoderLayer`](../../src/qwen3_moe/decoder.py)、[`model.py::TinyDenseCausalLM`](../../src/qwen3_moe/model.py)；[`test_decoder.py`](../../tests/test_decoder.py)、[`test_model.py`](../../tests/test_model.py)。
+> - **返回主线：** [主线课程目录](../course/README.md)
+
 > 本周目标：把已经验证过的 normalization、causal GQA、RoPE、QK Norm 和 SwiGLU 按正确的 pre-norm residual 顺序组合，完成可逐层追踪的微型 Dense Causal LM forward。
 
 ## 目录

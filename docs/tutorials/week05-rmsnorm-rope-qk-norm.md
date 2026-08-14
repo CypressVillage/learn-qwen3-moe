@@ -1,5 +1,11 @@
 # 第五周教程：RMSNorm、RoPE 与 QK Norm
 
+> **深入实验导航**
+> - **主线位置：** [第 04 章：Attention](../course/04-attention.md)，深入 hidden-state RMSNorm、QK Norm、RoPE 及其操作顺序。
+> - **建议何时读：** 在主线第 04 章已理解 Q/K/V 和 causal mask 后阅读；首次可跳过多种位置编码横向比较、低精度误差实验和证明型扩展。
+> - **源码与测试：** [`norms.py::RMSNorm`](../../src/qwen3_moe/norms.py)、[`rope.py::RotaryEmbedding`](../../src/qwen3_moe/rope.py)、[`rope.py::apply_rotary_pos_emb`](../../src/qwen3_moe/rope.py)、[`attention.py::GroupedQueryAttention`](../../src/qwen3_moe/attention.py)；[`test_norms.py`](../../tests/test_norms.py)、[`test_rope.py`](../../tests/test_rope.py)、[`test_attention.py`](../../tests/test_attention.py)。
+> - **返回主线：** [主线课程目录](../course/README.md)
+
 > 本周目标：解决第四周 attention 尚未处理的两个问题：控制进入子层及 Q/K 的数值尺度，并让 Q/K 点积感知 token 的相对位置；随后按 Qwen3 attention 的顺序接回 causal GQA。
 
 ## 目录

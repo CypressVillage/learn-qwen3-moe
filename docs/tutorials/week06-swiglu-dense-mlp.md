@@ -1,5 +1,11 @@
 # 第六周教程：SwiGLU 与 Dense MLP
 
+> **深入实验导航**
+> - **主线位置：** [第 05 章：MLP](../course/05-mlp.md)，深入逐 token 特征变换、SwiGLU 三条投影路径以及参数和激活内存。
+> - **建议何时读：** 完成主线 Attention 后，在第 05 章需要推导 `gate/up/down` 或核算内存时阅读；首次可跳过激活函数横向实验、参数扫描和分块扩展。
+> - **源码与测试：** [`mlp.py::SwiGLU`](../../src/qwen3_moe/mlp.py)、[`config.py::DenseConfig`](../../src/qwen3_moe/config.py)；[`test_mlp.py`](../../tests/test_mlp.py)、[`test_config.py`](../../tests/test_config.py)。
+> - **返回主线：** [主线课程目录](../course/README.md)
+
 > 本周目标：解决 attention 只负责 token 间信息混合、却缺少逐 token 特征变换的问题；从普通 Dense MLP 出发，逐步实现 Qwen3-style 无 bias SwiGLU，并核算参数与中间激活。
 
 ## 目录

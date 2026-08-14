@@ -1,5 +1,11 @@
 # 第二周教程：矩阵乘法与 `nn.Module`
 
+> **深入实验导航**
+> - **主线位置：** [第 03 章：真实模型中的张量流](../course/03-tensor-flow.md)，补充投影、广播、批量矩阵乘法和 `nn.Module` 状态。
+> - **建议何时读：** 先读[第 01 章：模型外壳](../course/01-model-shell.md)，在主线第 03 章遇到线性投影和模块注册时选读；首次可跳过保存/恢复状态、低精度误差比较和 profiler 扩展。
+> - **源码与测试：** [`config.py::DenseConfig`](../../src/qwen3_moe/config.py)、[`model.py::TinyDenseCausalLM`](../../src/qwen3_moe/model.py)、[`attention.py::GroupedQueryAttention`](../../src/qwen3_moe/attention.py)；[`test_config.py`](../../tests/test_config.py)、[`test_model.py`](../../tests/test_model.py)、[`test_attention.py`](../../tests/test_attention.py)。
+> - **返回主线：** [主线课程目录](../course/README.md)
+
 **目录**
 
 - [这周要学会什么](#goals)

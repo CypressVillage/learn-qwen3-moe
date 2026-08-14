@@ -1,5 +1,11 @@
 # 第四周教程：Self-Attention 与 GQA
 
+> **深入实验导航**
+> - **主线位置：** [第 04 章：Attention](../course/04-attention.md)，深入 causal mask、Q/K/V、多头拆分和 GQA 分组。
+> - **建议何时读：** 先完成主线第 02-03 章，在第 04 章需要手算 attention 或比较物理复制与逻辑分组时阅读；首次可跳过实现路线对照和性能扩展。
+> - **源码与测试：** [`attention.py::GroupedQueryAttention`](../../src/qwen3_moe/attention.py)、[`config.py::DenseConfig`](../../src/qwen3_moe/config.py)；[`test_attention.py`](../../tests/test_attention.py)、[`test_config.py`](../../tests/test_config.py)。
+> - **返回主线：** [主线课程目录](../course/README.md)
+
 > 本周目标：解决第三周“每个 token 位置彼此独立”的缺口，让当前位置按内容读取允许看到的历史；再从单头扩展到多头，并用 GQA 减少独立 K/V heads。
 
 ## 目录

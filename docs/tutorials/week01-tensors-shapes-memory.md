@@ -1,5 +1,11 @@
 # 第一周教程：张量、形状与内存
 
+> **深入实验导航**
+> - **主线位置：** [第 03 章：真实模型中的张量流](../course/03-tensor-flow.md)，用于深入理解贯穿模型的 rank、shape、stride、dtype 与内存。
+> - **建议何时读：** 先完成[整机导览](../course/00-inference-overview.md)，读到主线第 03 章时再做；首次可跳过 CUDA 显存观察、packed INT4 细节和大部分参考答案。
+> - **源码与测试：** [`model.py::TinyDenseCausalLM.forward`](../../src/qwen3_moe/model.py)、[`attention.py::GroupedQueryAttention.forward`](../../src/qwen3_moe/attention.py)；[`test_model.py`](../../tests/test_model.py)、[`test_attention.py`](../../tests/test_attention.py)。
+> - **返回主线：** [主线课程目录](../course/README.md)
+
 **目录**
 
 - [这周要学会什么](#goals)

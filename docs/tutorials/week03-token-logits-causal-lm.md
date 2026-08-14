@@ -1,5 +1,11 @@
 # 第三周教程：Token、Logits 与因果语言建模
 
+> **深入实验导航**
+> - **主线位置：** [整机导览](../course/00-inference-overview.md)、[第 01 章：模型外壳](../course/01-model-shell.md)与[第 07 章：自回归生成](../course/07-autoregressive-generation.md)，深入输入/输出边界和 next-token 选择。
+> - **建议何时读：** 完成整机导览后，在学习模型外壳或生成循环时选读；首次可跳过 teacher forcing 细节、temperature 扫描和大部分扩展练习。
+> - **源码与测试：** [`model.py::TinyDenseCausalLM`](../../src/qwen3_moe/model.py) 的 `embedding`、`lm_head` 与 `forward()`；[`test_model.py`](../../tests/test_model.py)。
+> - **返回主线：** [主线课程目录](../course/README.md)
+
 **目录**
 
 - [本周在完整推理中的位置](#week-position)

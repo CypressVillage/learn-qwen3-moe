@@ -52,7 +52,8 @@ learn-qwen3-moe/
 │   ├── decoder.py                    # Pre-norm Dense Decoder Layer
 │   └── model.py                      # Tiny Dense Causal LM
 ├── examples/
-│   └── run_tiny_dense.py             # CPU 端到端 Dense forward
+│   ├── run_tiny_dense.py             # CPU 单次 Dense forward
+│   └── run_tiny_greedy.py            # 最小自回归 greedy 循环
 ├── scripts/
 │   └── check_environment.py          # Python、PyTorch 与 CUDA 检查器
 ├── tests/
@@ -62,12 +63,13 @@ learn-qwen3-moe/
 │   ├── roadmap.md                    # 16 周逐周路线
 │   ├── environment.md                # 本地与服务器环境
 │   ├── progress.md                   # 可复用学习周记模板
-│   ├── tutorials/                    # 按周组织的完整自包含教程
+│   ├── course/                       # 按认知依赖组织的首次学习主线
+│   ├── tutorials/                    # 按需选读的深入实验
 │   └── plans/                        # 学习项目设计说明
 └── .gitignore                        # 本地环境、模型权重和输出忽略规则
 ```
 
-当前仓库已包含教学大纲、第一至第七周教程，以及从这些教程提取出的可安装 Dense 推理底座。后续每周的新组件必须进入 `src/qwen3_moe/` 并配套测试，逐步替换或扩展为 MoE 推理框架。
+当前仓库已包含按认知依赖组织的主线课程、第一至第七周深入实验，以及从这些内容提取出的可安装 Dense 推理底座。后续新组件必须进入 `src/qwen3_moe/` 并配套测试，逐步替换或扩展为 MoE 推理框架。
 
 ## 快速开始
 
@@ -79,6 +81,7 @@ uv sync --locked --python 3.11.15
 uv run python scripts/check_environment.py
 uv run pytest
 uv run python examples/run_tiny_dense.py
+uv run python examples/run_tiny_greedy.py
 ```
 
 `pyproject.toml` 是手工维护的依赖来源，`uv.lock` 是精确锁文件，`requirements.txt` 只是为传统工具生成的兼容导出，绝不手工编辑。当前锁定基线为 Python 3.11.15、PyTorch `2.7.1+cpu` 和 NumPy 2.2.6，不要求 GPU。模型实现保持 device/dtype 无关；未来获得 GPU 后，应为目标 CUDA wheel 建立并验证独立运行 profile，而不是修改模型结构。完整说明见 [环境配置](docs/environment.md)。这些步骤不会下载模型。
@@ -89,23 +92,27 @@ uv run python examples/run_tiny_dense.py
 from qwen3_moe import DenseConfig, TinyDenseCausalLM
 ```
 
-环境检查通过后开始第一周教程：
+## 首次学习入口
 
-**开始学习：[第一周教程：张量、形状与内存](docs/tutorials/week01-tensors-shapes-memory.md)**
+环境检查通过后，先用约 60 分钟建立完整推理地图：
 
-**继续学习：[第二周教程：矩阵乘法与 nn.Module](docs/tutorials/week02-matmul-nn-module.md)**
+**开始学习：[LLM 推理整机导览](docs/course/00-inference-overview.md)**
 
-**继续学习：[第三周教程：Token、Logits 与因果语言建模](docs/tutorials/week03-token-logits-causal-lm.md)**
+随后从 [主线课程说明与阅读顺序](docs/course/README.md) 出发，按 `00 -> 08` 的认知依赖顺序继续。主线负责动机、整机位置、真实源码导航和最小运行闭环；不要把单次模型 forward 与完整自回归生成混为一谈。
 
-**继续学习：[第四周教程：Self-Attention 与 GQA](docs/tutorials/week04-self-attention-gqa.md)**
+## 深入实验
 
-**继续学习：[第五周教程：RMSNorm、RoPE 与 QK Norm](docs/tutorials/week05-rmsnorm-rope-qk-norm.md)**
+原七周教程保留为深入实验库，适合在主线章节提示时选读，用于补充 PyTorch API、公式推导、手算、受控错误和更多练习；它们不再是推荐的首次概念阅读顺序。
 
-**继续学习：[第六周教程：SwiGLU 与 Dense MLP](docs/tutorials/week06-swiglu-dense-mlp.md)**
+- [深入实验 1：张量、形状与内存](docs/tutorials/week01-tensors-shapes-memory.md)
+- [深入实验 2：矩阵乘法与 nn.Module](docs/tutorials/week02-matmul-nn-module.md)
+- [深入实验 3：Token、Logits 与因果语言建模](docs/tutorials/week03-token-logits-causal-lm.md)
+- [深入实验 4：Self-Attention 与 GQA](docs/tutorials/week04-self-attention-gqa.md)
+- [深入实验 5：RMSNorm、RoPE 与 QK Norm](docs/tutorials/week05-rmsnorm-rope-qk-norm.md)
+- [深入实验 6：SwiGLU 与 Dense MLP](docs/tutorials/week06-swiglu-dense-mlp.md)
+- [深入实验 7：完整 Dense Decoder](docs/tutorials/week07-dense-decoder.md)
 
-**继续学习：[第七周教程：完整 Dense Decoder](docs/tutorials/week07-dense-decoder.md)**
-
-也可以先阅读 [16 周路线](docs/roadmap.md)。前七周教程都不下载 Qwen3-30B-A3B，也不需要登录 Hugging Face。
+[16 周实践路线](docs/roadmap.md) 用于安排每周投入和验收，不替代上述首次学习主线。前七篇深入实验都不下载 Qwen3-30B-A3B，也不需要登录 Hugging Face。
 
 ## 学习方法
 
@@ -139,6 +146,8 @@ from qwen3_moe import DenseConfig, TinyDenseCausalLM
 
 ## 从这里继续
 
+- 首次建立推理地图：[docs/course/00-inference-overview.md](docs/course/00-inference-overview.md)
+- 查看主线阅读顺序：[docs/course/README.md](docs/course/README.md)
 - 配置机器：[docs/environment.md](docs/environment.md)
-- 查看每周任务与验收标准：[docs/roadmap.md](docs/roadmap.md)
+- 安排 16 周实践与验收：[docs/roadmap.md](docs/roadmap.md)
 - 复制周记模板开始记录：[docs/progress.md](docs/progress.md)
