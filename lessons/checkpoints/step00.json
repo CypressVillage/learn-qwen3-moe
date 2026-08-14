@@ -12,7 +12,7 @@
         "symbol": ""
       },
       "id": "step00-empty-repository",
-      "label": "从空仓库开始认识推理工程",
+      "label": "从目标模型资产认识空实现仓库",
       "repository_snapshot": {
         "files": []
       },

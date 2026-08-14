@@ -2,11 +2,72 @@
 
 <!-- checkpoint: step00-empty-repository -->
 
-这一章不实现模型。我们先像查看一张施工图那样，认识完整推理工程里有哪些文件、每个文件负责什么，以及它们怎样协作，把 prompt 变成下一个 token。
+这一章不实现模型。我们先像查看一张施工图那样，从 Hugging Face 上的目标模型仓库出发，认识我们拿到了哪些模型资产、需要编写哪些模块解释这些资产，以及它们怎样协作，把 prompt 变成下一个 token。
 
-左侧现在是一个空仓库。继续向下阅读时，文件会按介绍顺序逐个出现；它们暂时都保持空白，只建立模块边界，不提前放入后续章节才会讲解的实现。
+左侧现在是我们的空实现仓库，不是 Hugging Face 模型仓库。继续向下阅读时，Python 文件会按介绍顺序逐个出现；它们暂时都保持空白，只建立模块边界，不提前放入后续章节才会讲解的实现。
 
-## 1. 先认识工程里的模块
+## 1. 我们从 Hugging Face 仓库拿到什么
+
+本课程以 [`Qwen/Qwen3-30B-A3B`](https://huggingface.co/Qwen/Qwen3-30B-A3B) 这一类 Qwen3 MoE checkpoint 为目标。下载后的目录不是一份可以直接阅读执行的 NumPy 程序，而是一组描述模型、保存参数和定义文本编码方式的资产。
+
+省略具体分片数量后，可以把仓库看成：
+
+```text
+Qwen3-30B-A3B/
+|-- config.json
+|-- generation_config.json
+|-- tokenizer.json
+|-- tokenizer_config.json
+|-- merges.txt
+|-- vocab.json
+|-- model.safetensors.index.json
+|-- model-00001-of-NNNNN.safetensors
+|-- model-00002-of-NNNNN.safetensors
+|-- ...
+|-- README.md
+`-- LICENSE
+```
+
+仓库版本可能增减辅助文件，权重分片数量也可能变化，但推理最关心的边界保持一致：
+
+| 模型仓库资产 | 它告诉我们什么 |
+| --- | --- |
+| `config.json` | 模型层数、hidden size、Attention heads、KV heads、专家数量、RoPE 参数等结构信息 |
+| `model.safetensors.index.json` | 每个参数名位于哪个 Safetensors 分片 |
+| `model-*.safetensors` | Embedding、Attention、Norm、Router 和 Experts 的真实 tensor 数值 |
+| `tokenizer.json`、`vocab.json`、`merges.txt` | 文本如何切分并映射为与权重配套的 token IDs |
+| `tokenizer_config.json` | special tokens、chat template 和 tokenizer 行为配置 |
+| `generation_config.json` | EOS 以及 temperature、top-k、top-p 等默认生成设置 |
+| `README.md`、`LICENSE` | 模型用法、限制和授权条件，不直接参与 forward 计算 |
+
+这里有一个重要区别：`config.json` 是数据，不是模型代码；Safetensors 保存权重，也不描述完整计算过程。下载 checkpoint 只意味着原材料已经到齐，并不意味着我们已经拥有可执行的推理引擎。
+
+```text
+Hugging Face 模型仓库 = 配置 + tokenizer 资产 + 权重 + 元数据
+本课程实现仓库         = 读取这些资产并执行 Qwen3 MoE 推理的代码
+```
+
+## 2. 为什么需要自己的推理模块
+
+要让上面的静态资产真正运行，代码必须依次回答：配置怎样变成层和 shape，参数怎样从分片中取出，文本怎样变成 token IDs，每个 decoder layer 怎样计算，以及如何不断选择 next token。
+
+模型资产与本课程模块的对应关系如下：
+
+| Hugging Face 资产或运行时状态 | 本课程模块 | 执行职责 |
+| --- | --- | --- |
+| `config.json` | `config.py` | 读取、解析并校验模型结构 |
+| Safetensors index 和 shards | `checkpoint.py` | 定位并读取权重 tensor |
+| Tokenizer 相关文件 | `tokenizer.py` | 文本与 token IDs 互转 |
+| Embedding、Norm、Linear、MLP 权重 | `layers.py` | 执行可复用的基础张量计算 |
+| Attention 和 RoPE 权重与配置 | `attention.py`、`rope.py` | 执行上下文混合与位置旋转 |
+| Router 和 Expert 权重 | `moe.py` | 选择专家、dispatch、计算并合并 |
+| 全部结构与参数 | `model.py` | 组装 decoder layers 和完整模型 |
+| `generation_config.json` 和用户参数 | `generation.py` | 驱动生成循环、采样和停止 |
+| 推理时产生的历史 Key/Value | `cache.py` | 保存并复用已经计算过的上下文 |
+
+KV Cache 是唯一不来自模型仓库的这一类数据：它是在 forward 过程中动态产生的运行时状态。接下来我们逐个建立这些代码边界。
+
+## 3. 逐个认识工程模块
 
 推理并不是一个巨大的 `model.py`。文本处理、权重读取、Attention、MoE、缓存和生成循环有不同的输入输出，也会在不同阶段独立验证。把它们拆开，后续才能沿真实数据流逐章实现，而不会一次面对整台机器。
 
@@ -131,7 +192,7 @@ x [B,S,D]
 
 <!-- checkpoint: step00-module-flow -->
 
-## 2. 模块怎样连成一次完整推理
+## 4. 模块怎样连成一次完整推理
 
 从依赖关系看，可以把工程分成四层：
 
@@ -146,20 +207,20 @@ x [B,S,D]
 
 ```text
 generation.py
-  |-- tokenizer.py       文本 <-> token IDs
+  |-- tokenizer.py       读取 tokenizer 资产，文本 <-> token IDs
   |-- model.py           token IDs -> logits
-       |-- config.py     决定结构与 shape
-       |-- checkpoint.py 提供权重
+       |-- config.py     读取 config.json，决定结构与 shape
+       |-- checkpoint.py 读取 Safetensors 权重
        |-- layers.py     Embedding / Norm / Linear / MLP
        |-- attention.py  上下文混合
        |    |-- rope.py  位置旋转
-       |    `-- cache.py 历史 K/V
+       |    `-- cache.py 保存运行时历史 K/V
        `-- moe.py        router / experts / combine
 ```
 
 这个分层也解释了课程顺序：先确认配置和权重，再让文本进入模型；随后实现基础层、位置、Attention 和 MoE；最后组装完整模型与生成循环，并接入 KV Cache 优化。
 
-## 3. 从 prompt 到输出 token 的完整地图
+## 5. 从 prompt 到输出 token 的完整地图
 
 ```text
 prompt 文本
@@ -207,7 +268,7 @@ next_token [B, 1]
 4. 自回归生成是模型外部的循环，模型只完成一轮 token IDs 到 logits 的变换。
 5. KV Cache 连接相邻 forward，让后续轮次只计算新 token。
 
-## 4. 全程使用的 shape 符号
+## 6. 全程使用的 shape 符号
 
 | 符号 | 含义 | 典型张量 |
 | --- | --- | --- |
@@ -225,7 +286,7 @@ next_token [B, 1]
 
 不要把 `D = Hq * Dh` 当成所有 Qwen3 checkpoint 都必须满足的规则。实现应读取真实配置，并按权重 shape 建立投影边界。
 
-## 5. 后续每章怎样使用这张地图
+## 7. 后续每章怎样使用这张地图
 
 后续章节遵循同一套阅读方法：
 

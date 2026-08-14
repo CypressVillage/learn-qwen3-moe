@@ -48,7 +48,7 @@ def generate() -> None:
     checkpoints = [
         _checkpoint(
             "step00-empty-repository",
-            "从空仓库开始认识推理工程",
+            "从目标模型资产认识空实现仓库",
             "",
             [],
             [],

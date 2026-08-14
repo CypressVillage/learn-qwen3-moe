@@ -21,9 +21,9 @@
 ## 当前状态
 
 - 当前分支：`rewrite/visual-qwen3-moe-course`
-- Step 00、Step 01：完成。
+- Step 00、Step 01：完成；Step 00 已从 `Qwen/Qwen3-30B-A3B` 模型仓库资产出发，建立资产到推理模块的映射。
 - 当前源码：`config.py`、`checkpoint.py` 已实现，其余推理模块为空文件骨架。
-- 当前正文：`lessons/step00-inference-map.md`、`lessons/step01-overview-config-weights.md`。
+- 当前正文：`lessons/step00-inference-map.md`、`lessons/step01-overview-config-weights.md`；Step 00 先区分 Hugging Face 模型资产仓库与课程实现仓库，再展开源码骨架和完整推理地图。
 - 当前阅读资产：Step 00 有 13 个逐文件建立空骨架的 checkpoint，Step 01 有 6 个 insert-only checkpoint。
 - 当前网站：Vite/React 静态入口 `/`、`/step00/` 与 `/step01/`；顶部课程进度可展开并在现有 Step 文章间导航；左侧源码阅读器包含可折叠文件夹树、文件导航和 Python 语法高亮，右侧展示教程，并支持持久化的深浅色主题切换与可读性优化的代码字体。
 - 下一步：实现 Step 02 Tokenizer，并持续回连 Step 00 推理地图。
