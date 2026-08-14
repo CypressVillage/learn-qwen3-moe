@@ -66,7 +66,7 @@
 - 当前阶段：阶段一“建立新骨架”尚未开始实现。
 - 当前里程碑：M1 课程基础设施，未开始。
 - 测试基线：`uv run pytest`，52 passed（2026-08-14）。
-- 工作树基线：设计文档 `docs/superpowers/specs/2026-08-14-visual-qwen3-moe-course-design.md` 尚未跟踪；不要擅自删除或覆盖。
+- 设计基线：`docs/superpowers/specs/2026-08-14-visual-qwen3-moe-course-design.md` 是当前重写的权威设计文档。
 - 当前包名：`qwen3_moe`。是否改为 `mini_qwen` 尚未决定。
 
 ### 已有可复用基础
@@ -248,4 +248,5 @@ uv run python examples/run_tiny_greedy.py
 
 | 日期 | 变更 | 证据 |
 | --- | --- | --- |
+| 2026-08-14 | 将可视化课程设计纳入版本控制；删除两份已明确被取代的环境计划 | 权威环境说明保留在 `docs/environment.md`，Dense 基线设计保留在 `docs/superpowers/specs/2026-08-07-installable-dense-foundation-design.md` |
 | 2026-08-14 | 建立会话状态入口；确认旧 Dense 基线与新课程缺口 | `uv run pytest`：52 passed；当前分支 `rewrite/visual-qwen3-moe-course` |
