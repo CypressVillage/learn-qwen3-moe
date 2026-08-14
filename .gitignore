@@ -10,7 +10,7 @@ dist/
 venv/
 env/
 
-# Test and tool caches
+# Tool caches
 .pytest_cache/
 .uv-cache/
 .coverage
@@ -34,6 +34,10 @@ htmlcov/
 /outputs/
 /runs/
 /wandb/
+
+# Static tutorial website
+/web/node_modules/
+/web/dist/
 
 # Local environment files
 .env
