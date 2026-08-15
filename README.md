@@ -2,6 +2,8 @@
 
 本项目从零实现 Qwen3 MoE 推理，并通过静态交互式教程同步展示原理和累计源码。
 
+在线课程：<https://cypressvillage.github.io/learn-qwen3-moe/>
+
 仓库只保留三类内容：
 
 1. `src/qwen3_moe/`：右侧源码阅读器展示的累计推理框架。

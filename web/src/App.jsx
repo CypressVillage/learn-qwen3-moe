@@ -10,6 +10,7 @@ import {
 } from "./checkpoint-progress.js";
 
 
+const baseUrl = import.meta.env.BASE_URL;
 const stepPresentation = {
   step00: {
     number: "00",
@@ -302,7 +303,10 @@ function Lab({ checkpoint, previousCheckpoint, checkpointIndex, checkpoints, lab
 }
 
 export function App() {
-  const requestedStep = window.location.pathname.split("/").filter(Boolean)[0] ?? "step00";
+  const relativePath = window.location.pathname.startsWith(baseUrl)
+    ? window.location.pathname.slice(baseUrl.length)
+    : window.location.pathname.replace(/^\/+/, "");
+  const requestedStep = relativePath.split("/").filter(Boolean)[0] ?? "step00";
   const step = content.steps.find((item) => item.id === requestedStep) ?? content.steps[0];
   const presentation = stepPresentation[step.id];
   const checkpoints = step.checkpoints;
@@ -399,7 +403,7 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="/"><span>Q3</span><strong>MOE INFERENCE LAB</strong></a>
+        <a className="brand" href={baseUrl}><span>Q3</span><strong>MOE INFERENCE LAB</strong></a>
         <div className="course-nav" ref={courseNavRef}>
           <button className="course-progress" onClick={() => setCourseNavOpen((open) => !open)} aria-expanded={courseNavOpen} aria-haspopup="true">
             <span>STEP {presentation.number} / 14</span>
@@ -414,7 +418,7 @@ export function App() {
                 const item = stepPresentation[courseStep.id];
                 const current = courseStep.id === step.id;
                 return (
-                  <a className={current ? "current" : ""} href={`/${courseStep.id}/`} aria-current={current ? "page" : undefined} key={courseStep.id}>
+                  <a className={current ? "current" : ""} href={`${baseUrl}${courseStep.id}/`} aria-current={current ? "page" : undefined} key={courseStep.id}>
                     <span>{item.number}</span>
                     <div><strong>{item.title}</strong><small>{item.summary}</small></div>
                     <b>{current ? "CURRENT" : "OPEN"}</b>
