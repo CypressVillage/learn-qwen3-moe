@@ -6,16 +6,27 @@ import inspect
 import json
 from pathlib import Path
 
+from qwen3_moe.attention import Qwen3Attention
 from qwen3_moe.generation import (
     greedy_next_token,
     last_token_logits,
     next_token_probabilities,
     sample_next_token,
 )
+from qwen3_moe.model import Qwen3DecoderLayer, Qwen3MoeForCausalLM
 
 
 ROOT = Path(__file__).parents[1]
 CHECKPOINT_PATH = ROOT / "lessons" / "checkpoints" / "step09.json"
+PATH_IMPORT = "from pathlib import Path\n\n"
+CACHE_IMPORT = "from qwen3_moe.cache import KVCache\n"
+RECTANGULAR_MASK = '''        if key.shape[2] != sequence_length:
+            cached_length = key.shape[2] - sequence_length
+            future_tokens = np.triu(
+                np.ones((sequence_length, key.shape[2]), dtype=bool),
+                k=cached_length + 1,
+            )
+'''
 
 
 def _source_text(relative_path: str) -> str:
@@ -27,7 +38,46 @@ def _through(symbol: object) -> str:
     lines = _source_text(relative_path).splitlines(keepends=True)
     _, start = inspect.getsourcelines(symbol)
     symbol_lines = inspect.getsource(symbol).splitlines(keepends=True)
-    return "".join(lines[: start - 1 + len(symbol_lines)])
+    source = "".join(lines[: start - 1 + len(symbol_lines)])
+    return source.replace(PATH_IMPORT, "").replace(CACHE_IMPORT, "")
+
+
+def _method_source(symbol: object) -> str:
+    return "\n" + inspect.getsource(symbol)
+
+
+def _prefill_attention() -> str:
+    lines = _source_text("src/qwen3_moe/attention.py").splitlines(keepends=True)
+    _, start = inspect.getsourcelines(Qwen3Attention.__call__)
+    method_lines = inspect.getsource(Qwen3Attention.__call__).splitlines(keepends=True)
+    source = "".join(lines[: start - 1 + len(method_lines)])
+    return source.replace(CACHE_IMPORT, "").replace(RECTANGULAR_MASK, "")
+
+
+def _prefill_model() -> str:
+    source = _source_text("src/qwen3_moe/model.py")
+    for block in (
+        CACHE_IMPORT,
+        _method_source(Qwen3DecoderLayer._cached_attention_block),
+        _method_source(Qwen3DecoderLayer.cached),
+        _method_source(Qwen3MoeForCausalLM._cached_position_ids),
+        _method_source(Qwen3MoeForCausalLM.cached),
+    ):
+        source = source.replace(block, "")
+    return source
+
+
+def _step09_generation() -> str:
+    return _through(sample_next_token)
+
+
+def _package_through_generation() -> str:
+    return "".join(
+        line
+        for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
+        if "generate_token_ids" not in line
+        and "generate_text" not in line
+    )
 
 
 def _package_without_generation() -> str:
@@ -36,6 +86,8 @@ def _package_without_generation() -> str:
         "last_token_logits",
         "next_token_probabilities",
         "sample_next_token",
+        "generate_token_ids",
+        "generate_text",
     )
     return "".join(
         line
@@ -87,6 +139,10 @@ def generate() -> None:
             if relative_path == generation_path
             else _package_without_generation()
             if relative_path == package_path
+            else _prefill_attention()
+            if relative_path == "src/qwen3_moe/attention.py"
+            else _prefill_model()
+            if relative_path == "src/qwen3_moe/model.py"
             else _source_text(relative_path)
         )
         for relative_path in source_files
@@ -105,11 +161,11 @@ def generate() -> None:
     }
     sampling = {
         **probabilities,
-        generation_path: _source_text(generation_path),
+        generation_path: _step09_generation(),
     }
     package_export = {
         **sampling,
-        package_path: _source_text(package_path),
+        package_path: _package_through_generation(),
     }
     staged = [
         ("step09-ready", "从完整 vocabulary logits 进入 token 选择", generation_path, initial, "", 0, "initial", []),

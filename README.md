@@ -12,7 +12,7 @@
 
 ## 当前内容
 
-Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置和权重读取，Step 02 实现 Qwen3 byte-level BPE Tokenizer，Step 03 实现 Embedding、RMSNorm 和 Linear 基础层，Step 04 用 RoPE 把位置信息写入 Query 和 Key，Step 05 实现带 QK Norm、RoPE 与 causal mask 的 GQA Attention，Step 06 实现 top-k Router 与 SwiGLU Experts 组成的 Sparse MoE，Step 07 把 RMSNorm、Attention、MoE 与两条 residual 组装成 Decoder Layer，Step 08 把完整模型串到 vocabulary logits，Step 09 再用 greedy、temperature 与随机采样选择 next token，Step 10 为每层保存并追加 Attention Key 与 Value，Step 11 让新 Query 读取缓存历史，Step 12 将缓存与绝对位置贯穿完整模型，Step 13 完成自回归生成循环：
+Step 00 先建立完整推理地图与空文件骨架，之后沿真实推理数据流逐章实现配置与权重读取、Tokenizer、基础层、RoPE、GQA Attention、Sparse MoE、Decoder Layer、完整 Causal LM、token selection、KV Cache、Cached Attention、完整模型 decode、自回归循环，最终在 Step 14 从模型目录与 prompt 生成文本：
 
 - `lessons/step00-inference-map.md`
 - `lessons/checkpoints/step00.json`
@@ -52,8 +52,10 @@ Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置和�
 - `lessons/checkpoints/step12.json`
 - `lessons/step13-autoregressive-generation.md`
 - `lessons/checkpoints/step13.json`
+- `lessons/step14-end-to-end-inference.md`
+- `lessons/checkpoints/step14.json`
 
-后续步骤会沿真实推理数据流继续累计实现：
+主线课程已经闭合完整推理链路：
 
 ```text
 文本 -> token IDs -> hidden states -> Qwen3 MoE Transformer
@@ -78,6 +80,7 @@ uv run python scripts/generate_step10_assets.py
 uv run python scripts/generate_step11_assets.py
 uv run python scripts/generate_step12_assets.py
 uv run python scripts/generate_step13_assets.py
+uv run python scripts/generate_step14_assets.py
 uv run python scripts/validate_course_assets.py
 
 cd web

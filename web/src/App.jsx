@@ -152,6 +152,16 @@ const stepPresentation = {
     kicker: "TOKEN BY TOKEN",
     duration: "约 50 分钟 · CPU ONLY",
   },
+  step14: {
+    number: "14",
+    progress: 100,
+    label: "END-TO-END INFERENCE",
+    title: "End-to-End Inference",
+    summary: "从模型目录与 prompt 生成完整文本",
+    labLabel: "Step 14 End-to-End Inference 实验台",
+    kicker: "FULL PIPELINE",
+    duration: "约 45 分钟 · CPU ONLY",
+  },
 };
 
 const savedTheme = window.localStorage.getItem("qwen3-moe-theme");
@@ -549,7 +559,7 @@ export function App() {
                   </a>
                 );
               })}
-              <div className="course-next"><span>NEXT</span><strong>STEP 14 · END-TO-END INFERENCE</strong><small>COMING SOON</small></div>
+              <div className="course-next"><span>COMPLETE</span><strong>STEP 00-14 · FULL INFERENCE</strong><small>COURSE READY</small></div>
             </nav>
           )}
         </div>

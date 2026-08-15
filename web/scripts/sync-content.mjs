@@ -79,6 +79,11 @@ const stepSources = [
     lessonPath: "lessons/step13-autoregressive-generation.md",
     checkpointPath: "lessons/checkpoints/step13.json",
   },
+  {
+    id: "step14",
+    lessonPath: "lessons/step14-end-to-end-inference.md",
+    checkpointPath: "lessons/checkpoints/step14.json",
+  },
 ];
 
 marked.use({

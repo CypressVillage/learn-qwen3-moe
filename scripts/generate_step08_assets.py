@@ -6,11 +6,20 @@ import inspect
 import json
 from pathlib import Path
 
-from qwen3_moe.model import Qwen3MoeForCausalLM
+from qwen3_moe.attention import Qwen3Attention
+from qwen3_moe.model import Qwen3DecoderLayer, Qwen3MoeForCausalLM
 
 
 ROOT = Path(__file__).parents[1]
 CHECKPOINT_PATH = ROOT / "lessons" / "checkpoints" / "step08.json"
+CACHE_IMPORT = "from qwen3_moe.cache import KVCache\n"
+RECTANGULAR_MASK = '''        if key.shape[2] != sequence_length:
+            cached_length = key.shape[2] - sequence_length
+            future_tokens = np.triu(
+                np.ones((sequence_length, key.shape[2]), dtype=bool),
+                k=cached_length + 1,
+            )
+'''
 
 
 def _source_text(relative_path: str) -> str:
@@ -25,8 +34,32 @@ def _through(symbol: object) -> str:
     return "".join(lines[: start - 1 + len(symbol_lines)])
 
 
+def _method_source(symbol: object) -> str:
+    return "\n" + inspect.getsource(symbol)
+
+
+def _without_cached_model(source: str) -> str:
+    for block in (
+        CACHE_IMPORT,
+        _method_source(Qwen3DecoderLayer._cached_attention_block),
+        _method_source(Qwen3DecoderLayer.cached),
+        _method_source(Qwen3MoeForCausalLM._cached_position_ids),
+        _method_source(Qwen3MoeForCausalLM.cached),
+    ):
+        source = source.replace(block, "")
+    return source
+
+
+def _prefill_attention() -> str:
+    lines = _source_text("src/qwen3_moe/attention.py").splitlines(keepends=True)
+    _, start = inspect.getsourcelines(Qwen3Attention.__call__)
+    method_lines = inspect.getsource(Qwen3Attention.__call__).splitlines(keepends=True)
+    source = "".join(lines[: start - 1 + len(method_lines)])
+    return source.replace(CACHE_IMPORT, "").replace(RECTANGULAR_MASK, "")
+
+
 def _model_without_causal_lm() -> str:
-    source = _source_text("src/qwen3_moe/model.py")
+    source = _without_cached_model(_source_text("src/qwen3_moe/model.py"))
     marker = "\n\nclass Qwen3MoeForCausalLM:"
     return "".join(
         line
@@ -60,6 +93,8 @@ def _package_without_causal_lm() -> str:
                 "last_token_logits",
                 "next_token_probabilities",
                 "sample_next_token",
+                "generate_token_ids",
+                "generate_text",
                 "KVCache",
             )
         )
@@ -105,6 +140,8 @@ def generate() -> None:
             if relative_path == model_path
             else _package_without_causal_lm()
             if relative_path == package_path
+            else _prefill_attention()
+            if relative_path == "src/qwen3_moe/attention.py"
             else _source_text(relative_path)
         )
         for relative_path in source_files
@@ -112,24 +149,24 @@ def generate() -> None:
     components = {
         **initial,
         model_path: _without_checkpoint_import(
-            _through(Qwen3MoeForCausalLM.__init__)
+            _without_cached_model(_through(Qwen3MoeForCausalLM.__init__))
         ),
     }
     checkpoint_loading = {
         **components,
-        model_path: _through(Qwen3MoeForCausalLM.from_checkpoint),
+        model_path: _without_cached_model(_through(Qwen3MoeForCausalLM.from_checkpoint)),
     }
     decoder_loading = {
         **checkpoint_loading,
-        model_path: _through(Qwen3MoeForCausalLM._load_decoder_layer),
+        model_path: _without_cached_model(_through(Qwen3MoeForCausalLM._load_decoder_layer)),
     }
     positions = {
         **decoder_loading,
-        model_path: _through(Qwen3MoeForCausalLM._position_ids),
+        model_path: _without_cached_model(_through(Qwen3MoeForCausalLM._position_ids)),
     }
     forward = {
         **positions,
-        model_path: _source_text(model_path),
+        model_path: _without_cached_model(_source_text(model_path)),
     }
     package_export = {
         **forward,
@@ -145,6 +182,8 @@ def generate() -> None:
                     "last_token_logits",
                     "next_token_probabilities",
                     "sample_next_token",
+                    "generate_token_ids",
+                    "generate_text",
                     "KVCache",
                 )
             )

@@ -11,6 +11,14 @@ from qwen3_moe.attention import Qwen3Attention
 
 ROOT = Path(__file__).parents[1]
 CHECKPOINT_PATH = ROOT / "lessons" / "checkpoints" / "step05.json"
+CACHE_IMPORT = "from qwen3_moe.cache import KVCache\n"
+RECTANGULAR_MASK = '''        if key.shape[2] != sequence_length:
+            cached_length = key.shape[2] - sequence_length
+            future_tokens = np.triu(
+                np.ones((sequence_length, key.shape[2]), dtype=bool),
+                k=cached_length + 1,
+            )
+'''
 
 
 def _source_text(relative_path: str) -> str:
@@ -23,6 +31,10 @@ def _through(symbol: object) -> str:
     _, start = inspect.getsourcelines(symbol)
     symbol_lines = inspect.getsource(symbol).splitlines(keepends=True)
     return "".join(lines[: start - 1 + len(symbol_lines)])
+
+
+def _prefill_attention_through(symbol: object) -> str:
+    return _through(symbol).replace(CACHE_IMPORT, "").replace(RECTANGULAR_MASK, "")
 
 
 def _package_without_attention() -> str:
@@ -47,6 +59,8 @@ def _package_without_attention() -> str:
                 "last_token_logits",
                 "next_token_probabilities",
                 "sample_next_token",
+                "generate_token_ids",
+                "generate_text",
                 "KVCache",
             )
         )
@@ -73,6 +87,8 @@ def _package_through_attention() -> str:
                 "last_token_logits",
                 "next_token_probabilities",
                 "sample_next_token",
+                "generate_token_ids",
+                "generate_text",
                 "KVCache",
             )
         )
@@ -122,23 +138,23 @@ def generate() -> None:
     }
     weights = {
         **initial,
-        attention_path: _through(Qwen3Attention.__init__),
+        attention_path: _prefill_attention_through(Qwen3Attention.__init__),
     }
     projections = {
         **weights,
-        attention_path: _through(Qwen3Attention._project_query_key_value),
+        attention_path: _prefill_attention_through(Qwen3Attention._project_query_key_value),
     }
     positions = {
         **projections,
-        attention_path: _through(Qwen3Attention._apply_positions),
+        attention_path: _prefill_attention_through(Qwen3Attention._apply_positions),
     }
     attention = {
         **positions,
-        attention_path: _through(Qwen3Attention._scaled_dot_product_attention),
+        attention_path: _prefill_attention_through(Qwen3Attention._scaled_dot_product_attention),
     }
     forward = {
         **attention,
-        attention_path: _source_text(attention_path),
+        attention_path: _prefill_attention_through(Qwen3Attention.__call__),
     }
     package_export = {
         **forward,

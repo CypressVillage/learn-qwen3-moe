@@ -39,13 +39,13 @@
 ## 当前状态
 
 - 当前分支：`master`
-- Step 00 至 Step 13：完成；课程已经闭合 token-by-token 自回归生成循环。
-- 当前源码：`generate_token_ids()` 对单条 prompt 执行一次 cached prefill，之后按 greedy 或 temperature sampling 选 token，只把新 token 送入 cached decode，并按 EOS 或最大新 token 数停止。
-- 当前正文：已完成 `lessons/step00-inference-map.md` 至 `lessons/step13-autoregressive-generation.md`；Step 13 解释 prefill-once、单 token decode、EOS 顺序、长度边界与可复现 RNG。
-- 当前阅读资产：Step 13 有 3 个 insert-only checkpoint，历史 checkpoint 保持逐行可累积。
-- 当前网站：Vite/React 静态入口 `/` 与 `/step00/` 至 `/step13/`；课程导航与源码阅读器已接入 Step 13。
+- Step 00 至 Step 14：完成；主线课程已经从文本输入闭合到生成文本输出。
+- 当前源码：`generate_text()` 从模型目录加载 config、Safetensors、Tokenizer 与完整模型，编码单条 prompt，调用 cached 自回归循环，再将完整 token 序列解码回文本。
+- 当前正文：已完成 `lessons/step00-inference-map.md` 至 `lessons/step14-end-to-end-inference.md`；Step 14 汇总模型资产、文本入口、生成参数、解码出口与完整推理地图。
+- 当前阅读资产：Step 14 有 4 个 insert-only checkpoint，最终快照等于当前源码；历史 checkpoint 保持逐行可累积。
+- 当前网站：Vite/React 静态入口 `/` 与 `/step00/` 至 `/step14/`；课程导航与源码阅读器已接入全部主线章节。
 - 当前规划：主线固定为 Step 00 至 Step 14；推理优化内容独立放入后日谈，不计入主线进度。
-- 下一步：实现 Step 14 端到端 Qwen3 MoE 推理，连接模型目录、Tokenizer、生成循环与文本输出。
+- 下一步：主线完成；推理优化内容只在后日谈中继续，不计入 Step 00 至 Step 14。
 
 ## 工作流程
 
@@ -90,8 +90,9 @@ uv run python scripts/generate_step10_assets.py
 uv run python scripts/generate_step11_assets.py
 uv run python scripts/generate_step12_assets.py
 uv run python scripts/generate_step13_assets.py
+uv run python scripts/generate_step14_assets.py
 uv run python scripts/validate_course_assets.py
-uv run python -c "from qwen3_moe import Embedding, Linear, Qwen3Attention, Qwen3DecoderLayer, Qwen3MoeConfig, Qwen3MoeExperts, Qwen3MoeForCausalLM, Qwen3MoeRouter, Qwen3SparseMoeBlock, Qwen3Tokenizer, RMSNorm, RotaryEmbedding, SafetensorsCheckpoint, apply_rotary_position_embedding, greedy_next_token, last_token_logits, next_token_probabilities, sample_next_token"
+uv run python -c "from qwen3_moe import Embedding, KVCache, Linear, Qwen3Attention, Qwen3DecoderLayer, Qwen3MoeConfig, Qwen3MoeExperts, Qwen3MoeForCausalLM, Qwen3MoeRouter, Qwen3SparseMoeBlock, Qwen3Tokenizer, RMSNorm, RotaryEmbedding, SafetensorsCheckpoint, apply_rotary_position_embedding, generate_text, generate_token_ids, greedy_next_token, last_token_logits, next_token_probabilities, sample_next_token"
 ```
 
 `web/` 下：

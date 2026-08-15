@@ -25,6 +25,7 @@ export default defineConfig({
         step11: resolve(import.meta.dirname, "step11/index.html"),
         step12: resolve(import.meta.dirname, "step12/index.html"),
         step13: resolve(import.meta.dirname, "step13/index.html"),
+        step14: resolve(import.meta.dirname, "step14/index.html"),
       },
     },
   },

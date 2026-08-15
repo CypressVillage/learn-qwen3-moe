@@ -54,6 +54,8 @@ def _package_without_rope() -> str:
                 "last_token_logits",
                 "next_token_probabilities",
                 "sample_next_token",
+                "generate_token_ids",
+                "generate_text",
                 "KVCache",
             )
         )
@@ -82,6 +84,8 @@ def _package_through_rope() -> str:
                 "last_token_logits",
                 "next_token_probabilities",
                 "sample_next_token",
+                "generate_token_ids",
+                "generate_text",
                 "KVCache",
             )
         )

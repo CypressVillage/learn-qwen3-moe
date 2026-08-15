@@ -1,4 +1,4 @@
-"""Generate the Step 13 cumulative autoregressive generation checkpoints."""
+"""Generate the Step 14 cumulative end-to-end inference checkpoints."""
 
 from __future__ import annotations
 
@@ -6,23 +6,24 @@ import inspect
 import json
 from pathlib import Path
 
-from qwen3_moe.generation import generate_token_ids
+from qwen3_moe.generation import _load_model_directory, generate_text
 
 
 ROOT = Path(__file__).parents[1]
-CHECKPOINT_PATH = ROOT / "lessons" / "checkpoints" / "step13.json"
+CHECKPOINT_PATH = ROOT / "lessons" / "checkpoints" / "step14.json"
 GENERATION_PATH = "src/qwen3_moe/generation.py"
 PACKAGE_PATH = "src/qwen3_moe/__init__.py"
-CACHE_IMPORT = "from qwen3_moe.cache import KVCache\n"
 PATH_IMPORT = "from pathlib import Path\n\n"
-PACKAGE_IMPORT = "from qwen3_moe.generation import generate_token_ids\n"
-PACKAGE_EXPORT = '    "generate_token_ids",\n'
-TEXT_PACKAGE_IMPORT = "from qwen3_moe.generation import generate_text\n"
-TEXT_PACKAGE_EXPORT = '    "generate_text",\n'
+PACKAGE_IMPORT = "from qwen3_moe.generation import generate_text\n"
+PACKAGE_EXPORT = '    "generate_text",\n'
 
 
 def _source_text(relative_path: str) -> str:
     return (ROOT / relative_path).read_text(encoding="utf-8")
+
+
+def _function_source(symbol: object) -> str:
+    return "\n\n" + inspect.getsource(symbol) + "\n"
 
 
 def _focus_range(content: str, marker: str, line_count: int) -> dict[str, object]:
@@ -59,18 +60,14 @@ def generate() -> None:
         PACKAGE_PATH,
     ]
     generation_source = _source_text(GENERATION_PATH)
-    function_source = "\n\n" + inspect.getsource(generate_token_ids) + "\n"
-    loading_source = generation_source[generation_source.index("\n\ndef _load_model_directory"):]
-    step13_generation = generation_source.replace(PATH_IMPORT, "").replace(
+    loading_source = _function_source(_load_model_directory)
+    text_source = _function_source(generate_text)
+    initial_generation = generation_source.replace(PATH_IMPORT, "").replace(
         loading_source, ""
+    ).replace(text_source, "")
+    initial_package = _source_text(PACKAGE_PATH).replace(PACKAGE_IMPORT, "").replace(
+        PACKAGE_EXPORT, ""
     )
-    initial_generation = step13_generation.replace(CACHE_IMPORT, "").replace(
-        function_source, ""
-    )
-    step13_package = _source_text(PACKAGE_PATH).replace(TEXT_PACKAGE_IMPORT, "").replace(
-        TEXT_PACKAGE_EXPORT, ""
-    )
-    initial_package = step13_package.replace(PACKAGE_IMPORT, "").replace(PACKAGE_EXPORT, "")
     initial = {
         relative_path: (
             initial_generation
@@ -81,19 +78,24 @@ def generate() -> None:
         )
         for relative_path in source_files
     }
-    loop = {**initial, GENERATION_PATH: step13_generation}
-    package_export = {**loop, PACKAGE_PATH: step13_package}
+    loading = {
+        **initial,
+        GENERATION_PATH: generation_source.replace(text_source, ""),
+    }
+    text = {**loading, GENERATION_PATH: generation_source}
+    package_export = {**text, PACKAGE_PATH: _source_text(PACKAGE_PATH)}
     staged = [
-        ("step13-ready", "从单步 cached decode 进入重复生成", GENERATION_PATH, initial, "def sample_next_token", 16, "initial", []),
-        ("step13-loop", "连接 prefill、token selection 与 cached decode", GENERATION_PATH, loop, "def generate_token_ids", 49, "insert", [GENERATION_PATH]),
-        ("step13-package", "从包入口导出自回归生成循环", PACKAGE_PATH, package_export, "generate_token_ids", 20, "insert", [PACKAGE_PATH]),
+        ("step14-ready", "从 token ID 循环回到文本入口", GENERATION_PATH, initial, "def generate_token_ids", 14, "initial", []),
+        ("step14-loading", "从模型目录组装 config、权重、Tokenizer 与模型", GENERATION_PATH, loading, "def _load_model_directory", 15, "insert", [GENERATION_PATH]),
+        ("step14-text", "编码 prompt、生成 token IDs 并解码文本", GENERATION_PATH, text, "def generate_text", 39, "insert", [GENERATION_PATH]),
+        ("step14-package", "从包入口导出端到端文本生成", PACKAGE_PATH, package_export, "generate_text", 22, "insert", [PACKAGE_PATH]),
     ]
     checkpoints = []
     for checkpoint_id, label, active_file, contents, marker, count, kind, files in staged:
         checkpoints.append(
             {
                 "id": checkpoint_id,
-                "step": "step13",
+                "step": "step14",
                 "label": label,
                 "active_file": active_file,
                 "focus_range": _focus_range(contents[active_file], marker, count),

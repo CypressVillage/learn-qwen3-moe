@@ -6,11 +6,20 @@ import inspect
 import json
 from pathlib import Path
 
+from qwen3_moe.attention import Qwen3Attention
 from qwen3_moe.model import Qwen3DecoderLayer
 
 
 ROOT = Path(__file__).parents[1]
 CHECKPOINT_PATH = ROOT / "lessons" / "checkpoints" / "step07.json"
+CACHE_IMPORT = "from qwen3_moe.cache import KVCache\n"
+RECTANGULAR_MASK = '''        if key.shape[2] != sequence_length:
+            cached_length = key.shape[2] - sequence_length
+            future_tokens = np.triu(
+                np.ones((sequence_length, key.shape[2]), dtype=bool),
+                k=cached_length + 1,
+            )
+'''
 
 
 def _source_text(relative_path: str) -> str:
@@ -27,8 +36,17 @@ def _through(symbol: object) -> str:
         line
         for line in source.splitlines(keepends=True)
         if "qwen3_moe.checkpoint" not in line
+        and "qwen3_moe.cache" not in line
         and "from qwen3_moe.layers import Embedding, Linear" not in line
     )
+
+
+def _prefill_attention() -> str:
+    lines = _source_text("src/qwen3_moe/attention.py").splitlines(keepends=True)
+    _, start = inspect.getsourcelines(Qwen3Attention.__call__)
+    method_lines = inspect.getsource(Qwen3Attention.__call__).splitlines(keepends=True)
+    source = "".join(lines[: start - 1 + len(method_lines)])
+    return source.replace(CACHE_IMPORT, "").replace(RECTANGULAR_MASK, "")
 
 
 def _package_without_decoder_layer() -> str:
@@ -47,6 +65,8 @@ def _package_without_decoder_layer() -> str:
                 "last_token_logits",
                 "next_token_probabilities",
                 "sample_next_token",
+                "generate_token_ids",
+                "generate_text",
                 "KVCache",
             )
         )
@@ -67,6 +87,8 @@ def _package_with_decoder_layer() -> str:
                 "last_token_logits",
                 "next_token_probabilities",
                 "sample_next_token",
+                "generate_token_ids",
+                "generate_text",
                 "KVCache",
             )
         )
@@ -112,6 +134,8 @@ def generate() -> None:
             if relative_path == model_path
             else _package_without_decoder_layer()
             if relative_path == package_path
+            else _prefill_attention()
+            if relative_path == "src/qwen3_moe/attention.py"
             else _source_text(relative_path)
         )
         for relative_path in source_files

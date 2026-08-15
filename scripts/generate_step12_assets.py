@@ -6,6 +6,7 @@ import inspect
 import json
 from pathlib import Path
 
+from qwen3_moe.generation import sample_next_token
 from qwen3_moe.model import Qwen3DecoderLayer, Qwen3MoeForCausalLM
 
 
@@ -13,6 +14,7 @@ ROOT = Path(__file__).parents[1]
 CHECKPOINT_PATH = ROOT / "lessons" / "checkpoints" / "step12.json"
 MODEL_PATH = "src/qwen3_moe/model.py"
 CACHE_IMPORT = "from qwen3_moe.cache import KVCache\n"
+PATH_IMPORT = "from pathlib import Path\n\n"
 
 
 def _source_text(relative_path: str) -> str:
@@ -27,6 +29,26 @@ def _remove(source: str, *blocks: str) -> str:
     for block in blocks:
         source = source.replace(block, "")
     return source
+
+
+def _source_through(relative_path: str, symbol: object) -> str:
+    lines = _source_text(relative_path).splitlines(keepends=True)
+    _, start = inspect.getsourcelines(symbol)
+    symbol_lines = inspect.getsource(symbol).splitlines(keepends=True)
+    return "".join(lines[: start - 1 + len(symbol_lines)])
+
+
+def _step09_generation() -> str:
+    source = _source_through("src/qwen3_moe/generation.py", sample_next_token)
+    return source.replace(PATH_IMPORT, "").replace(CACHE_IMPORT, "")
+
+
+def _package_before_step13() -> str:
+    return "".join(
+        line
+        for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
+        if "generate_token_ids" not in line and "generate_text" not in line
+    )
 
 
 def _focus_range(content: str, marker: str, line_count: int) -> dict[str, object]:
@@ -76,7 +98,13 @@ def generate() -> None:
         model_cached,
     )
     initial = {
-        relative_path: initial_model if relative_path == MODEL_PATH else _source_text(relative_path)
+        relative_path: initial_model
+        if relative_path == MODEL_PATH
+        else _step09_generation()
+        if relative_path == "src/qwen3_moe/generation.py"
+        else _package_before_step13()
+        if relative_path == "src/qwen3_moe/__init__.py"
+        else _source_text(relative_path)
         for relative_path in source_files
     }
     decoder = {

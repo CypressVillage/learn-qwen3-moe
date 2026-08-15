@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 
 from qwen3_moe.cache import KVCache
@@ -100,3 +102,48 @@ def generate_token_ids(
             break
         logits = model.cached(next_token[:, None], cache)
     return generated
+
+
+def _load_model_directory(model_directory: str | Path) -> tuple[object, object]:
+    from qwen3_moe.checkpoint import SafetensorsCheckpoint
+    from qwen3_moe.config import Qwen3MoeConfig
+    from qwen3_moe.model import Qwen3MoeForCausalLM
+    from qwen3_moe.tokenizer import Qwen3Tokenizer
+
+    model_directory = Path(model_directory)
+    config = Qwen3MoeConfig.from_json(model_directory / "config.json")
+    checkpoint = SafetensorsCheckpoint.from_directory(model_directory)
+    tokenizer = Qwen3Tokenizer.from_file(model_directory / "tokenizer.json")
+    model = Qwen3MoeForCausalLM.from_checkpoint(config, checkpoint)
+    return tokenizer, model
+
+
+def generate_text(
+    model_directory: str | Path,
+    prompt: str,
+    max_new_tokens: int,
+    *,
+    eos_token_id: int | None = None,
+    temperature: float | None = None,
+    seed: int | None = None,
+    skip_special_tokens: bool = True,
+) -> str:
+    """Load a Qwen3 MoE directory and generate decoded text from one prompt."""
+    tokenizer, model = _load_model_directory(model_directory)
+    prompt_ids = tokenizer.encode(prompt)
+    if not prompt_ids:
+        raise ValueError("prompt must encode to at least one token")
+
+    rng = np.random.default_rng(seed) if temperature is not None else None
+    generated_ids = generate_token_ids(
+        model,
+        np.asarray([prompt_ids], dtype=np.int64),
+        max_new_tokens,
+        eos_token_id=eos_token_id,
+        temperature=temperature,
+        rng=rng,
+    )
+    return tokenizer.decode(
+        generated_ids[0],
+        skip_special_tokens=skip_special_tokens,
+    )
