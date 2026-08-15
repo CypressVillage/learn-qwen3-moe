@@ -31,11 +31,21 @@ def _package_without_moe() -> str:
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
         if "qwen3_moe.moe" not in line
         and "qwen3_moe.model" not in line
+        and "qwen3_moe.generation" not in line
         and '"Qwen3MoeExperts"' not in line
         and '"Qwen3MoeRouter"' not in line
         and '"Qwen3SparseMoeBlock"' not in line
         and '"Qwen3DecoderLayer"' not in line
         and '"Qwen3MoeForCausalLM"' not in line
+        and not any(
+            f'"{name}"' in line
+            for name in (
+                "greedy_next_token",
+                "last_token_logits",
+                "next_token_probabilities",
+                "sample_next_token",
+            )
+        )
     )
 
 
@@ -44,8 +54,18 @@ def _package_through_moe() -> str:
         line
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
         if "qwen3_moe.model" not in line
+        and "qwen3_moe.generation" not in line
         and '"Qwen3DecoderLayer"' not in line
         and '"Qwen3MoeForCausalLM"' not in line
+        and not any(
+            f'"{name}"' in line
+            for name in (
+                "greedy_next_token",
+                "last_token_logits",
+                "next_token_probabilities",
+                "sample_next_token",
+            )
+        )
     )
 
 

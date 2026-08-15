@@ -54,6 +54,11 @@ const stepSources = [
     lessonPath: "lessons/step08-causal-lm-prefill.md",
     checkpointPath: "lessons/checkpoints/step08.json",
   },
+  {
+    id: "step09",
+    lessonPath: "lessons/step09-next-token-selection.md",
+    checkpointPath: "lessons/checkpoints/step09.json",
+  },
 ];
 
 marked.use({

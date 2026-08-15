@@ -102,6 +102,16 @@ const stepPresentation = {
     kicker: "FULL MODEL",
     duration: "约 60 分钟 · CPU ONLY",
   },
+  step09: {
+    number: "09",
+    progress: 64.28,
+    label: "NEXT TOKEN SELECTION",
+    title: "Next Token Selection",
+    summary: "用 greedy、temperature 与采样选择 token",
+    labLabel: "Step 09 Next Token Selection 实验台",
+    kicker: "DECODING POLICY",
+    duration: "约 45 分钟 · CPU ONLY",
+  },
 };
 
 const savedTheme = window.localStorage.getItem("qwen3-moe-theme");
@@ -499,7 +509,7 @@ export function App() {
                   </a>
                 );
               })}
-              <div className="course-next"><span>NEXT</span><strong>STEP 09 · NEXT TOKEN SELECTION</strong><small>COMING SOON</small></div>
+              <div className="course-next"><span>NEXT</span><strong>STEP 10 · KV CACHE</strong><small>COMING SOON</small></div>
             </nav>
           )}
         </div>

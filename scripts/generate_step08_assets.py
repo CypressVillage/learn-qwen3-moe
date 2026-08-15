@@ -51,6 +51,16 @@ def _package_without_causal_lm() -> str:
         line
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
         if "Qwen3MoeForCausalLM" not in line
+        and "qwen3_moe.generation" not in line
+        and not any(
+            f'"{name}"' in line
+            for name in (
+                "greedy_next_token",
+                "last_token_logits",
+                "next_token_probabilities",
+                "sample_next_token",
+            )
+        )
     )
 
 
@@ -121,7 +131,20 @@ def generate() -> None:
     }
     package_export = {
         **forward,
-        package_path: _source_text(package_path),
+        package_path: "".join(
+            line
+            for line in _source_text(package_path).splitlines(keepends=True)
+            if "qwen3_moe.generation" not in line
+            and not any(
+                f'"{name}"' in line
+                for name in (
+                    "greedy_next_token",
+                    "last_token_logits",
+                    "next_token_probabilities",
+                    "sample_next_token",
+                )
+            )
+        ),
     }
     staged = [
         ("step08-ready", "从单层输出进入完整模型组装", model_path, initial, "class Qwen3DecoderLayer", 8, "initial", []),
