@@ -72,6 +72,16 @@ const stepPresentation = {
     kicker: "CONTEXT READING",
     duration: "约 60 分钟 · CPU ONLY",
   },
+  step06: {
+    number: "06",
+    progress: 42.85,
+    label: "SPARSE MIXTURE OF EXPERTS",
+    title: "Sparse MoE",
+    summary: "为每个 token 选择并合并 top-k experts",
+    labLabel: "Step 06 Sparse MoE 实验台",
+    kicker: "EXPERT ROUTING",
+    duration: "约 60 分钟 · CPU ONLY",
+  },
 };
 
 const savedTheme = window.localStorage.getItem("qwen3-moe-theme");
@@ -469,7 +479,7 @@ export function App() {
                   </a>
                 );
               })}
-              <div className="course-next"><span>NEXT</span><strong>STEP 06 · MOE</strong><small>COMING SOON</small></div>
+              <div className="course-next"><span>NEXT</span><strong>STEP 07 · DECODER LAYER</strong><small>COMING SOON</small></div>
             </nav>
           )}
         </div>

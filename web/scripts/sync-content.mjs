@@ -39,6 +39,11 @@ const stepSources = [
     lessonPath: "lessons/step05-gqa-attention.md",
     checkpointPath: "lessons/checkpoints/step05.json",
   },
+  {
+    id: "step06",
+    lessonPath: "lessons/step06-sparse-moe.md",
+    checkpointPath: "lessons/checkpoints/step06.json",
+  },
 ];
 
 marked.use({
