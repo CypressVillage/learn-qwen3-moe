@@ -9,4 +9,4 @@
 
 课程入口：[Step 00：Qwen3 MoE 概览](step00-inference-map.md)。
 
-当前实现章节：[Step 04：RoPE](step04-rope.md)。
+当前实现章节：[Step 05：GQA Attention](step05-gqa-attention.md)。

@@ -1,4 +1,4 @@
-"""Generate the Step 04 cumulative RoPE checkpoints."""
+"""Generate the Step 05 cumulative GQA Attention checkpoints."""
 
 from __future__ import annotations
 
@@ -6,15 +6,11 @@ import inspect
 import json
 from pathlib import Path
 
-from qwen3_moe.rope import (
-    RotaryEmbedding,
-    _rotate_half,
-    apply_rotary_position_embedding,
-)
+from qwen3_moe.attention import Qwen3Attention
 
 
 ROOT = Path(__file__).parents[1]
-CHECKPOINT_PATH = ROOT / "lessons" / "checkpoints" / "step04.json"
+CHECKPOINT_PATH = ROOT / "lessons" / "checkpoints" / "step05.json"
 
 
 def _source_text(relative_path: str) -> str:
@@ -22,31 +18,14 @@ def _source_text(relative_path: str) -> str:
 
 
 def _through(symbol: object) -> str:
-    relative_path = "src/qwen3_moe/rope.py"
+    relative_path = "src/qwen3_moe/attention.py"
     lines = _source_text(relative_path).splitlines(keepends=True)
     _, start = inspect.getsourcelines(symbol)
     symbol_lines = inspect.getsource(symbol).splitlines(keepends=True)
     return "".join(lines[: start - 1 + len(symbol_lines)])
 
 
-def _package_without_rope() -> str:
-    return "".join(
-        line
-        for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
-        if "qwen3_moe.rope" not in line
-        and "qwen3_moe.attention" not in line
-        and not any(
-            f'"{name}"' in line
-            for name in (
-                "RotaryEmbedding",
-                "Qwen3Attention",
-                "apply_rotary_position_embedding",
-            )
-        )
-    )
-
-
-def _package_through_rope() -> str:
+def _package_without_attention() -> str:
     return "".join(
         line
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
@@ -80,44 +59,53 @@ def generate() -> None:
         "src/qwen3_moe/tokenizer.py",
         "src/qwen3_moe/layers.py",
         "src/qwen3_moe/rope.py",
+        "src/qwen3_moe/attention.py",
         "src/qwen3_moe/__init__.py",
     ]
-    config_path, checkpoint_path, tokenizer_path, layers_path, rope_path, package_path = source_files
+    attention_path = "src/qwen3_moe/attention.py"
+    package_path = "src/qwen3_moe/__init__.py"
     initial = {
-        config_path: _source_text(config_path),
-        checkpoint_path: _source_text(checkpoint_path),
-        tokenizer_path: _source_text(tokenizer_path),
-        layers_path: _source_text(layers_path),
-        rope_path: "",
-        package_path: _package_without_rope(),
+        relative_path: (
+            ""
+            if relative_path == attention_path
+            else _package_without_attention()
+            if relative_path == package_path
+            else _source_text(relative_path)
+        )
+        for relative_path in source_files
     }
-    inverse_frequencies = {
+    weights = {
         **initial,
-        rope_path: _through(RotaryEmbedding.__init__),
+        attention_path: _through(Qwen3Attention.__init__),
     }
-    position_angles = {
-        **inverse_frequencies,
-        rope_path: _through(RotaryEmbedding.__call__),
+    projections = {
+        **weights,
+        attention_path: _through(Qwen3Attention._project_query_key_value),
     }
-    rotate_half = {
-        **position_angles,
-        rope_path: _through(_rotate_half),
+    positions = {
+        **projections,
+        attention_path: _through(Qwen3Attention._apply_positions),
     }
-    apply_rotation = {
-        **rotate_half,
-        rope_path: _source_text(rope_path),
+    attention = {
+        **positions,
+        attention_path: _through(Qwen3Attention._scaled_dot_product_attention),
+    }
+    forward = {
+        **attention,
+        attention_path: _source_text(attention_path),
     }
     package_export = {
-        **apply_rotation,
-        package_path: _package_through_rope(),
+        **forward,
+        package_path: _source_text(package_path),
     }
     staged = [
-        ("step04-ready", "带着 projected hidden states 来到空 RoPE", rope_path, initial, "", 0, "initial", []),
-        ("step04-inverse-frequencies", "为每个旋转平面建立逆频率", rope_path, inverse_frequencies, "class RotaryEmbedding", 16, "insert", [rope_path]),
-        ("step04-position-angles", "把 position IDs 展开成 cosine 与 sine", rope_path, position_angles, "def __call__", 14, "insert", [rope_path]),
-        ("step04-rotate-half", "把 head vector 的两半配成旋转平面", rope_path, rotate_half, "def _rotate_half", 4, "insert", [rope_path]),
-        ("step04-apply", "把位置信息同时写入 Query 和 Key", rope_path, apply_rotation, "def apply_rotary_position_embedding", 31, "insert", [rope_path]),
-        ("step04-package", "从包入口导出 RoPE 能力", package_path, package_export, "qwen3_moe.rope", 13, "insert", [package_path]),
+        ("step05-ready", "带着带位置信号的 Q/K 积木来到空 Attention", attention_path, initial, "", 0, "initial", []),
+        ("step05-weights", "接住一层 Attention 的真实权重", attention_path, weights, "class Qwen3Attention", 61, "insert", [attention_path]),
+        ("step05-projections", "投影 Q/K/V 并执行 QK Norm", attention_path, projections, "def _project_query_key_value", 22, "insert", [attention_path]),
+        ("step05-positions", "在点积前把 RoPE 接回 Q/K", attention_path, positions, "def _apply_positions", 9, "insert", [attention_path]),
+        ("step05-causal-attention", "共享 KV heads 并只读取当前位置以前", attention_path, attention, "def _scaled_dot_product_attention", 28, "insert", [attention_path]),
+        ("step05-forward", "合并 heads 并回到 hidden size", attention_path, forward, "def __call__", 31, "insert", [attention_path]),
+        ("step05-package", "从包入口导出 GQA Attention", package_path, package_export, "qwen3_moe.attention", 13, "insert", [package_path]),
     ]
     checkpoints = []
     for checkpoint_id, label, active_file, contents, marker, count, kind, files in staged:
@@ -129,7 +117,7 @@ def generate() -> None:
         checkpoints.append(
             {
                 "id": checkpoint_id,
-                "step": "step04",
+                "step": "step05",
                 "label": label,
                 "active_file": active_file,
                 "focus_range": focus,

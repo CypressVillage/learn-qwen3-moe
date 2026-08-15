@@ -42,6 +42,7 @@ def _package_before_tokenizer() -> str:
         if "qwen3_moe.tokenizer" not in line
         and "qwen3_moe.layers" not in line
         and "qwen3_moe.rope" not in line
+        and "qwen3_moe.attention" not in line
         and '"Qwen3Tokenizer"' not in line
         and not any(
             f'"{name}"' in line
@@ -50,6 +51,7 @@ def _package_before_tokenizer() -> str:
                 "Linear",
                 "RMSNorm",
                 "RotaryEmbedding",
+                "Qwen3Attention",
                 "apply_rotary_position_embedding",
             )
         )
@@ -62,6 +64,7 @@ def _package_through_tokenizer() -> str:
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
         if "qwen3_moe.layers" not in line
         and "qwen3_moe.rope" not in line
+        and "qwen3_moe.attention" not in line
         and not any(
             f'"{name}"' in line
             for name in (
@@ -69,6 +72,7 @@ def _package_through_tokenizer() -> str:
                 "Linear",
                 "RMSNorm",
                 "RotaryEmbedding",
+                "Qwen3Attention",
                 "apply_rotary_position_embedding",
             )
         )

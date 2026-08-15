@@ -31,6 +31,7 @@ def _package_without_layers() -> str:
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
         if "qwen3_moe.layers" not in line
         and "qwen3_moe.rope" not in line
+        and "qwen3_moe.attention" not in line
         and not any(
             f'"{name}"' in line
             for name in (
@@ -38,6 +39,7 @@ def _package_without_layers() -> str:
                 "Linear",
                 "RMSNorm",
                 "RotaryEmbedding",
+                "Qwen3Attention",
                 "apply_rotary_position_embedding",
             )
         )
@@ -49,9 +51,14 @@ def _package_through_layers() -> str:
         line
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
         if "qwen3_moe.rope" not in line
+        and "qwen3_moe.attention" not in line
         and not any(
             f'"{name}"' in line
-            for name in ("RotaryEmbedding", "apply_rotary_position_embedding")
+            for name in (
+                "RotaryEmbedding",
+                "Qwen3Attention",
+                "apply_rotary_position_embedding",
+            )
         )
     )
 

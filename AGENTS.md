@@ -20,13 +20,13 @@
 
 ## 当前状态
 
-- 当前分支：`rewrite/visual-qwen3-moe-course`
-- Step 00、Step 01、Step 02、Step 03、Step 04：完成；五章都从 `Qwen/Qwen3-30B-A3B` 真实仓库资产切入，始终沿 prompt 到 next token 的数据流推进。
-- 当前源码：`config.py`、`checkpoint.py`、`tokenizer.py`、`layers.py`、`rope.py` 已实现并按教学主线精简；RoPE 使用纯 NumPy 从 position IDs 构造 cosine/sine，并在允许 Q/K head 数不同的前提下旋转 Query 和 Key；其余推理模块为空文件骨架。
-- 当前正文：`lessons/step00-inference-map.md`、`lessons/step01-overview-config-weights.md`、`lessons/step02-tokenizer.md`、`lessons/step03-basic-layers.md`、`lessons/step04-rope.md`；Step 04 围绕“把 token 的位置写进 Query 和 Key”展开，依次解释逆频率、position angles、half-split 旋转和 GQA 广播。
-- 当前阅读资产：Step 00 有 13 个逐文件建立空骨架的 checkpoint，Step 01 有 6 个 insert-only checkpoint，Step 02 有 8 个 insert-only checkpoint，Step 03 有 6 个 insert-only checkpoint，Step 04 有 6 个 insert-only checkpoint。
-- 当前网站：Vite/React 静态入口 `/`、`/step00/`、`/step01/`、`/step02/`、`/step03/` 与 `/step04/`；顶部课程进度可展开并在现有 Step 文章间导航，正文底部提供上一章、下一章入口；左侧源码阅读器包含可折叠文件夹树、文件导航和 Python 语法高亮，右侧展示教程，并支持持久化的深浅色主题切换与可读性优化的代码字体；`master` 推送后由 GitHub Actions 构建并部署到 GitHub Pages。
-- 下一步：实现 Step 05 GQA Attention，从真实 Q/K/V 权重开始，加入 QK Norm、RoPE、causal mask 和注意力加权。
+- 当前分支：`master`
+- Step 00、Step 01、Step 02、Step 03、Step 04、Step 05：完成；六章都从 `Qwen/Qwen3-30B-A3B` 真实仓库资产切入，始终沿 prompt 到 next token 的数据流推进。
+- 当前源码：`config.py`、`checkpoint.py`、`tokenizer.py`、`layers.py`、`rope.py`、`attention.py` 已实现并按教学主线精简；Attention 使用纯 NumPy 完成真实 Q/K/V/O 投影、按 head 的 QK Norm、RoPE、GQA KV 共享、causal mask、稳定 softmax 与 Value 加权，当前边界为无 KV Cache 的 prefill；其余推理模块为空文件骨架。
+- 当前正文：`lessons/step00-inference-map.md`、`lessons/step01-overview-config-weights.md`、`lessons/step02-tokenizer.md`、`lessons/step03-basic-layers.md`、`lessons/step04-rope.md`、`lessons/step05-gqa-attention.md`；Step 05 围绕“让每个 token 只读取已经出现的上下文”展开，依次解释真实 Attention 权重、Q/K/V head shape、QK Norm、RoPE 接入、GQA 分组、causal softmax、Value 加权与输出投影。
+- 当前阅读资产：Step 00 有 13 个逐文件建立空骨架的 checkpoint，Step 01 有 6 个 insert-only checkpoint，Step 02 有 8 个 insert-only checkpoint，Step 03 有 6 个 insert-only checkpoint，Step 04 有 6 个 insert-only checkpoint，Step 05 有 7 个 insert-only checkpoint。
+- 当前网站：Vite/React 静态入口 `/`、`/step00/`、`/step01/`、`/step02/`、`/step03/`、`/step04/` 与 `/step05/`；顶部课程进度可展开并在现有 Step 文章间导航，正文底部提供上一章、下一章入口；左侧源码阅读器包含可折叠文件夹树、文件导航和 Python 语法高亮，右侧展示教程，并支持持久化的深浅色主题切换与可读性优化的代码字体；`master` 推送后由 GitHub Actions 构建并部署到 GitHub Pages。
+- 下一步：实现 Step 06 MoE，从真实 Router 与 Expert 权重开始，为每个 token 选择 top-k experts，并按 routing probability 合并专家输出。
 
 ## 工作流程
 
@@ -62,8 +62,9 @@ uv run python scripts/generate_step01_assets.py
 uv run python scripts/generate_step02_assets.py
 uv run python scripts/generate_step03_assets.py
 uv run python scripts/generate_step04_assets.py
+uv run python scripts/generate_step05_assets.py
 uv run python scripts/validate_course_assets.py
-uv run python -c "from qwen3_moe import Embedding, Linear, Qwen3MoeConfig, Qwen3Tokenizer, RMSNorm, RotaryEmbedding, SafetensorsCheckpoint, apply_rotary_position_embedding"
+uv run python -c "from qwen3_moe import Embedding, Linear, Qwen3Attention, Qwen3MoeConfig, Qwen3Tokenizer, RMSNorm, RotaryEmbedding, SafetensorsCheckpoint, apply_rotary_position_embedding"
 ```
 
 `web/` 下：

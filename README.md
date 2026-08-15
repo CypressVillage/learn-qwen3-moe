@@ -12,7 +12,7 @@
 
 ## 当前内容
 
-Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置和权重读取，Step 02 实现 Qwen3 byte-level BPE Tokenizer，Step 03 实现 Embedding、RMSNorm 和 Linear 基础层，Step 04 用 RoPE 把位置信息写入 Query 和 Key：
+Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置和权重读取，Step 02 实现 Qwen3 byte-level BPE Tokenizer，Step 03 实现 Embedding、RMSNorm 和 Linear 基础层，Step 04 用 RoPE 把位置信息写入 Query 和 Key，Step 05 实现带 QK Norm、RoPE 与 causal mask 的 GQA Attention：
 
 - `lessons/step00-inference-map.md`
 - `lessons/checkpoints/step00.json`
@@ -29,6 +29,9 @@ Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置和�
 - `src/qwen3_moe/rope.py`
 - `lessons/step04-rope.md`
 - `lessons/checkpoints/step04.json`
+- `src/qwen3_moe/attention.py`
+- `lessons/step05-gqa-attention.md`
+- `lessons/checkpoints/step05.json`
 
 后续步骤会沿真实推理数据流继续累计实现：
 
@@ -46,6 +49,7 @@ uv run python scripts/generate_step01_assets.py
 uv run python scripts/generate_step02_assets.py
 uv run python scripts/generate_step03_assets.py
 uv run python scripts/generate_step04_assets.py
+uv run python scripts/generate_step05_assets.py
 uv run python scripts/validate_course_assets.py
 
 cd web

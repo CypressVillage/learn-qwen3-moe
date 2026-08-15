@@ -62,6 +62,16 @@ const stepPresentation = {
     kicker: "POSITION SIGNAL",
     duration: "约 45 分钟 · CPU ONLY",
   },
+  step05: {
+    number: "05",
+    progress: 35.71,
+    label: "GROUPED-QUERY ATTENTION",
+    title: "GQA Attention",
+    summary: "让每个 token 只读取已经出现的上下文",
+    labLabel: "Step 05 GQA Attention 实验台",
+    kicker: "CONTEXT READING",
+    duration: "约 60 分钟 · CPU ONLY",
+  },
 };
 
 const savedTheme = window.localStorage.getItem("qwen3-moe-theme");
@@ -459,7 +469,7 @@ export function App() {
                   </a>
                 );
               })}
-              <div className="course-next"><span>NEXT</span><strong>STEP 05 · ATTENTION</strong><small>COMING SOON</small></div>
+              <div className="course-next"><span>NEXT</span><strong>STEP 06 · MOE</strong><small>COMING SOON</small></div>
             </nav>
           )}
         </div>
