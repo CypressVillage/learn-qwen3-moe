@@ -82,6 +82,16 @@ const stepPresentation = {
     kicker: "EXPERT ROUTING",
     duration: "约 60 分钟 · CPU ONLY",
   },
+  step07: {
+    number: "07",
+    progress: 50,
+    label: "DECODER LAYER ASSEMBLY",
+    title: "Decoder Layer",
+    summary: "组装 Attention、MoE 与两条 residual",
+    labLabel: "Step 07 Decoder Layer 实验台",
+    kicker: "LAYER ASSEMBLY",
+    duration: "约 50 分钟 · CPU ONLY",
+  },
 };
 
 const savedTheme = window.localStorage.getItem("qwen3-moe-theme");
@@ -479,7 +489,7 @@ export function App() {
                   </a>
                 );
               })}
-              <div className="course-next"><span>NEXT</span><strong>STEP 07 · DECODER LAYER</strong><small>COMING SOON</small></div>
+              <div className="course-next"><span>NEXT</span><strong>STEP 08 · CAUSAL LM PREFILL</strong><small>COMING SOON</small></div>
             </nav>
           )}
         </div>

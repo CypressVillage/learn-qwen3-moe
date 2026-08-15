@@ -39,13 +39,13 @@
 ## 当前状态
 
 - 当前分支：`master`
-- Step 00、Step 01、Step 02、Step 03、Step 04、Step 05、Step 06：完成；七章都从 `Qwen/Qwen3-30B-A3B` 真实仓库资产切入，始终沿 prompt 到 next token 的数据流推进。
-- 当前源码：`config.py`、`checkpoint.py`、`tokenizer.py`、`layers.py`、`rope.py`、`attention.py`、`moe.py` 已实现并按教学主线精简；Attention 完成无 KV Cache 的 causal GQA prefill，MoE 使用纯 NumPy 完成 Router softmax、top-k、routing probability 归一化、融合 SwiGLU Experts 与稀疏加权合并；其余推理模块为空文件骨架。
-- 当前正文：已完成 `lessons/step00-inference-map.md` 至 `lessons/step06-sparse-moe.md`；Step 06 围绕“让每个 token 只调用最合适的专家”展开，依次解释真实 Router/Expert 权重、token 展平、top-k routing、融合 SwiGLU、按 expert 聚合执行与 routing-weighted sum。
-- 当前阅读资产：Step 00 有 13 个逐文件建立空骨架的 checkpoint，Step 01 有 6 个 insert-only checkpoint，Step 02 有 8 个 insert-only checkpoint，Step 03 有 6 个 insert-only checkpoint，Step 04 有 6 个 insert-only checkpoint，Step 05 有 7 个 insert-only checkpoint，Step 06 有 7 个 insert-only checkpoint。
-- 当前网站：Vite/React 静态入口 `/` 与 `/step00/` 至 `/step06/`；顶部课程进度可展开并在现有 Step 文章间导航，正文底部提供上一章、下一章入口；左侧源码阅读器包含可折叠文件夹树、文件导航和 Python 语法高亮，右侧展示教程，并支持持久化的深浅色主题切换与可读性优化的代码字体；`master` 推送后由 GitHub Actions 构建并部署到 GitHub Pages。
+- Step 00、Step 01、Step 02、Step 03、Step 04、Step 05、Step 06、Step 07：完成；八章都从 `Qwen/Qwen3-30B-A3B` 真实仓库资产切入，始终沿 prompt 到 next token 的数据流推进。
+- 当前源码：`config.py`、`checkpoint.py`、`tokenizer.py`、`layers.py`、`rope.py`、`attention.py`、`moe.py` 已实现基础模块，`model.py` 已实现单个 `Qwen3DecoderLayer`；当前支持无 KV Cache 的 causal GQA prefill、Sparse MoE 与两条 pre-norm residual connection，其余完整模型与生成模块仍为空文件骨架。
+- 当前正文：已完成 `lessons/step00-inference-map.md` 至 `lessons/step07-decoder-layer.md`；Step 07 围绕“把 Attention、MoE 与两条 residual 组装成一层”展开，依次解释真实层权重归属、两个 pre-norm 子块、residual 主干、完整 layer forward 与 48 层堆叠位置。
+- 当前阅读资产：Step 00 有 13 个逐文件建立空骨架的 checkpoint，Step 01 有 6 个 insert-only checkpoint，Step 02 有 8 个 insert-only checkpoint，Step 03 有 6 个 insert-only checkpoint，Step 04 有 6 个 insert-only checkpoint，Step 05 有 7 个 insert-only checkpoint，Step 06 有 7 个 insert-only checkpoint，Step 07 有 6 个 insert-only checkpoint。
+- 当前网站：Vite/React 静态入口 `/` 与 `/step00/` 至 `/step07/`；顶部课程进度可展开并在现有 Step 文章间导航，正文底部提供上一章、下一章入口；左侧源码阅读器包含可折叠文件夹树、文件导航和 Python 语法高亮，右侧展示教程，并支持持久化的深浅色主题切换与可读性优化的代码字体；`master` 推送后由 GitHub Actions 构建并部署到 GitHub Pages。
 - 当前规划：主线固定为 Step 00 至 Step 14；推理优化内容独立放入后日谈，不计入主线进度。
-- 下一步：实现 Step 07 Decoder Layer，把 RMSNorm、Attention、MoE 与两条 residual connection 组装成完整层。
+- 下一步：实现 Step 08 完整 Causal LM prefill，把 Embedding、全部 Decoder Layers、final RMSNorm 与 LM Head 串成 vocabulary logits。
 
 ## 工作流程
 
@@ -83,8 +83,9 @@ uv run python scripts/generate_step03_assets.py
 uv run python scripts/generate_step04_assets.py
 uv run python scripts/generate_step05_assets.py
 uv run python scripts/generate_step06_assets.py
+uv run python scripts/generate_step07_assets.py
 uv run python scripts/validate_course_assets.py
-uv run python -c "from qwen3_moe import Embedding, Linear, Qwen3Attention, Qwen3MoeConfig, Qwen3MoeExperts, Qwen3MoeRouter, Qwen3SparseMoeBlock, Qwen3Tokenizer, RMSNorm, RotaryEmbedding, SafetensorsCheckpoint, apply_rotary_position_embedding"
+uv run python -c "from qwen3_moe import Embedding, Linear, Qwen3Attention, Qwen3DecoderLayer, Qwen3MoeConfig, Qwen3MoeExperts, Qwen3MoeRouter, Qwen3SparseMoeBlock, Qwen3Tokenizer, RMSNorm, RotaryEmbedding, SafetensorsCheckpoint, apply_rotary_position_embedding"
 ```
 
 `web/` 下：

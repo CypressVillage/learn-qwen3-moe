@@ -9,4 +9,4 @@
 
 课程入口：[Step 00：Qwen3 MoE 概览](step00-inference-map.md)。
 
-当前实现章节：[Step 06：Sparse MoE](step06-sparse-moe.md)。
+当前实现章节：[Step 07：Decoder Layer](step07-decoder-layer.md)。
