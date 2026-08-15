@@ -9,4 +9,4 @@
 
 课程入口：[Step 00：Qwen3 MoE 概览](step00-inference-map.md)。
 
-当前实现章节：[Step 12：Cached Decode](step12-cached-decode.md)。
+当前实现章节：[Step 13：自回归生成循环](step13-autoregressive-generation.md)。

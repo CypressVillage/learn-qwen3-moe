@@ -142,6 +142,16 @@ const stepPresentation = {
     kicker: "MODEL INCREMENT",
     duration: "约 55 分钟 · CPU ONLY",
   },
+  step13: {
+    number: "13",
+    progress: 92.85,
+    label: "AUTOREGRESSIVE LOOP",
+    title: "Generation Loop",
+    summary: "循环执行 token selection 与 cached decode",
+    labLabel: "Step 13 Generation Loop 实验台",
+    kicker: "TOKEN BY TOKEN",
+    duration: "约 50 分钟 · CPU ONLY",
+  },
 };
 
 const savedTheme = window.localStorage.getItem("qwen3-moe-theme");
@@ -539,7 +549,7 @@ export function App() {
                   </a>
                 );
               })}
-              <div className="course-next"><span>NEXT</span><strong>STEP 13 · GENERATION LOOP</strong><small>COMING SOON</small></div>
+              <div className="course-next"><span>NEXT</span><strong>STEP 14 · END-TO-END INFERENCE</strong><small>COMING SOON</small></div>
             </nav>
           )}
         </div>

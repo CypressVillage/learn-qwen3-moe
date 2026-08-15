@@ -74,6 +74,11 @@ const stepSources = [
     lessonPath: "lessons/step12-cached-decode.md",
     checkpointPath: "lessons/checkpoints/step12.json",
   },
+  {
+    id: "step13",
+    lessonPath: "lessons/step13-autoregressive-generation.md",
+    checkpointPath: "lessons/checkpoints/step13.json",
+  },
 ];
 
 marked.use({

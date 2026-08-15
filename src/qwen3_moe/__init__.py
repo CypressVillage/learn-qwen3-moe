@@ -5,6 +5,7 @@ from qwen3_moe.cache import KVCache
 from qwen3_moe.checkpoint import SafetensorsCheckpoint, TensorInfo
 from qwen3_moe.config import Qwen3MoeConfig
 from qwen3_moe.generation import greedy_next_token, last_token_logits, next_token_probabilities, sample_next_token
+from qwen3_moe.generation import generate_token_ids
 from qwen3_moe.layers import Embedding, Linear, RMSNorm
 from qwen3_moe.model import Qwen3DecoderLayer
 from qwen3_moe.model import Qwen3MoeForCausalLM
@@ -30,6 +31,7 @@ __all__ = [
     "Qwen3Tokenizer",
     "apply_rotary_position_embedding",
     "greedy_next_token",
+    "generate_token_ids",
     "last_token_logits",
     "next_token_probabilities",
     "sample_next_token",

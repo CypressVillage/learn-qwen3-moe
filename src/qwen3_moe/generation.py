@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from qwen3_moe.cache import KVCache
 
 def last_token_logits(logits: np.ndarray) -> np.ndarray:
     """Return the vocabulary logits after the final input token."""
@@ -52,3 +53,50 @@ def sample_next_token(
         ],
         dtype=np.int64,
     )
+
+
+def generate_token_ids(
+    model: object,
+    prompt_token_ids: np.ndarray,
+    max_new_tokens: int,
+    *,
+    eos_token_id: int | None = None,
+    temperature: float | None = None,
+    rng: np.random.Generator | None = None,
+) -> np.ndarray:
+    """Generate one continuation with cached prefill and decode."""
+    prompt_token_ids = np.asarray(prompt_token_ids)
+    if prompt_token_ids.ndim != 2 or prompt_token_ids.shape[0] != 1:
+        raise ValueError("generation expects one prompt with shape [1,S]")
+    if prompt_token_ids.shape[1] == 0:
+        raise ValueError("generation requires at least one prompt token")
+    if not np.issubdtype(prompt_token_ids.dtype, np.integer):
+        raise ValueError("prompt token IDs must be integers")
+    if isinstance(max_new_tokens, bool) or not isinstance(max_new_tokens, int):
+        raise TypeError("max_new_tokens must be an integer")
+    if max_new_tokens < 0:
+        raise ValueError("max_new_tokens cannot be negative")
+
+    generated = prompt_token_ids.astype(np.int64, copy=True)
+    if max_new_tokens == 0:
+        return generated
+
+    layers = getattr(model, "layers", None)
+    if not isinstance(layers, list) or not layers:
+        raise ValueError("model must expose a non-empty decoder layer list")
+    cache = KVCache(len(layers))
+    logits = model.cached(generated, cache)
+
+    for step in range(max_new_tokens):
+        next_token = (
+            greedy_next_token(logits)
+            if temperature is None
+            else sample_next_token(logits, temperature, rng)
+        )
+        generated = np.concatenate((generated, next_token[:, None]), axis=1)
+        if eos_token_id is not None and next_token[0] == eos_token_id:
+            break
+        if step + 1 == max_new_tokens:
+            break
+        logits = model.cached(next_token[:, None], cache)
+    return generated
