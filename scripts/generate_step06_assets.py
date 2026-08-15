@@ -30,9 +30,22 @@ def _package_without_moe() -> str:
         line
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
         if "qwen3_moe.moe" not in line
+        and "qwen3_moe.model" not in line
         and '"Qwen3MoeExperts"' not in line
         and '"Qwen3MoeRouter"' not in line
         and '"Qwen3SparseMoeBlock"' not in line
+        and '"Qwen3DecoderLayer"' not in line
+        and '"Qwen3MoeForCausalLM"' not in line
+    )
+
+
+def _package_through_moe() -> str:
+    return "".join(
+        line
+        for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
+        if "qwen3_moe.model" not in line
+        and '"Qwen3DecoderLayer"' not in line
+        and '"Qwen3MoeForCausalLM"' not in line
     )
 
 
@@ -100,7 +113,7 @@ def generate() -> None:
     }
     package_export = {
         **block,
-        package_path: _source_text(package_path),
+        package_path: _package_through_moe(),
     }
     staged = [
         ("step06-ready", "带着 Attention 输出进入空 MoE 模块", moe_path, initial, "", 0, "initial", []),

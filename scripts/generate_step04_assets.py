@@ -35,11 +35,18 @@ def _package_without_rope() -> str:
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
         if "qwen3_moe.rope" not in line
         and "qwen3_moe.attention" not in line
+        and "qwen3_moe.moe" not in line
+        and "qwen3_moe.model" not in line
         and not any(
             f'"{name}"' in line
             for name in (
                 "RotaryEmbedding",
                 "Qwen3Attention",
+                "Qwen3DecoderLayer",
+                "Qwen3MoeExperts",
+                "Qwen3MoeForCausalLM",
+                "Qwen3MoeRouter",
+                "Qwen3SparseMoeBlock",
                 "apply_rotary_position_embedding",
             )
         )
@@ -50,7 +57,20 @@ def _package_through_rope() -> str:
     return "".join(
         line
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
-        if "qwen3_moe.attention" not in line and '"Qwen3Attention"' not in line
+        if "qwen3_moe.attention" not in line
+        and "qwen3_moe.moe" not in line
+        and "qwen3_moe.model" not in line
+        and '"Qwen3Attention"' not in line
+        and not any(
+            f'"{name}"' in line
+            for name in (
+                "Qwen3DecoderLayer",
+                "Qwen3MoeExperts",
+                "Qwen3MoeForCausalLM",
+                "Qwen3MoeRouter",
+                "Qwen3SparseMoeBlock",
+            )
+        )
     )
 
 

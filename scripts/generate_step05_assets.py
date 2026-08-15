@@ -29,7 +29,39 @@ def _package_without_attention() -> str:
     return "".join(
         line
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
-        if "qwen3_moe.attention" not in line and '"Qwen3Attention"' not in line
+        if "qwen3_moe.attention" not in line
+        and "qwen3_moe.moe" not in line
+        and "qwen3_moe.model" not in line
+        and '"Qwen3Attention"' not in line
+        and not any(
+            f'"{name}"' in line
+            for name in (
+                "Qwen3DecoderLayer",
+                "Qwen3MoeExperts",
+                "Qwen3MoeForCausalLM",
+                "Qwen3MoeRouter",
+                "Qwen3SparseMoeBlock",
+            )
+        )
+    )
+
+
+def _package_through_attention() -> str:
+    return "".join(
+        line
+        for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
+        if "qwen3_moe.moe" not in line
+        and "qwen3_moe.model" not in line
+        and not any(
+            f'"{name}"' in line
+            for name in (
+                "Qwen3DecoderLayer",
+                "Qwen3MoeExperts",
+                "Qwen3MoeForCausalLM",
+                "Qwen3MoeRouter",
+                "Qwen3SparseMoeBlock",
+            )
+        )
     )
 
 
@@ -96,7 +128,7 @@ def generate() -> None:
     }
     package_export = {
         **forward,
-        package_path: _source_text(package_path),
+        package_path: _package_through_attention(),
     }
     staged = [
         ("step05-ready", "带着带位置信号的 Q/K 积木来到空 Attention", attention_path, initial, "", 0, "initial", []),

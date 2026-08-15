@@ -12,7 +12,7 @@
 
 ## 当前内容
 
-Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置和权重读取，Step 02 实现 Qwen3 byte-level BPE Tokenizer，Step 03 实现 Embedding、RMSNorm 和 Linear 基础层，Step 04 用 RoPE 把位置信息写入 Query 和 Key，Step 05 实现带 QK Norm、RoPE 与 causal mask 的 GQA Attention，Step 06 实现 top-k Router 与 SwiGLU Experts 组成的 Sparse MoE，Step 07 把 RMSNorm、Attention、MoE 与两条 residual 组装成 Decoder Layer：
+Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置和权重读取，Step 02 实现 Qwen3 byte-level BPE Tokenizer，Step 03 实现 Embedding、RMSNorm 和 Linear 基础层，Step 04 用 RoPE 把位置信息写入 Query 和 Key，Step 05 实现带 QK Norm、RoPE 与 causal mask 的 GQA Attention，Step 06 实现 top-k Router 与 SwiGLU Experts 组成的 Sparse MoE，Step 07 把 RMSNorm、Attention、MoE 与两条 residual 组装成 Decoder Layer，Step 08 再把 Embedding、全部 Decoder Layers、final RMSNorm 与 LM Head 串成 vocabulary logits：
 
 - `lessons/step00-inference-map.md`
 - `lessons/checkpoints/step00.json`
@@ -38,6 +38,8 @@ Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置和�
 - `src/qwen3_moe/model.py`
 - `lessons/step07-decoder-layer.md`
 - `lessons/checkpoints/step07.json`
+- `lessons/step08-causal-lm-prefill.md`
+- `lessons/checkpoints/step08.json`
 
 后续步骤会沿真实推理数据流继续累计实现：
 
@@ -58,6 +60,7 @@ uv run python scripts/generate_step04_assets.py
 uv run python scripts/generate_step05_assets.py
 uv run python scripts/generate_step06_assets.py
 uv run python scripts/generate_step07_assets.py
+uv run python scripts/generate_step08_assets.py
 uv run python scripts/validate_course_assets.py
 
 cd web

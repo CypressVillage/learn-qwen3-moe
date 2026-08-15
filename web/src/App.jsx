@@ -92,6 +92,16 @@ const stepPresentation = {
     kicker: "LAYER ASSEMBLY",
     duration: "约 50 分钟 · CPU ONLY",
   },
+  step08: {
+    number: "08",
+    progress: 57.14,
+    label: "CAUSAL LM PREFILL",
+    title: "Causal LM Prefill",
+    summary: "把整段 prompt 推到 vocabulary logits",
+    labLabel: "Step 08 Causal LM Prefill 实验台",
+    kicker: "FULL MODEL",
+    duration: "约 60 分钟 · CPU ONLY",
+  },
 };
 
 const savedTheme = window.localStorage.getItem("qwen3-moe-theme");
@@ -489,7 +499,7 @@ export function App() {
                   </a>
                 );
               })}
-              <div className="course-next"><span>NEXT</span><strong>STEP 08 · CAUSAL LM PREFILL</strong><small>COMING SOON</small></div>
+              <div className="course-next"><span>NEXT</span><strong>STEP 09 · NEXT TOKEN SELECTION</strong><small>COMING SOON</small></div>
             </nav>
           )}
         </div>

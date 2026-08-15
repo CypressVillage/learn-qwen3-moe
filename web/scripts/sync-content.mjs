@@ -49,6 +49,11 @@ const stepSources = [
     lessonPath: "lessons/step07-decoder-layer.md",
     checkpointPath: "lessons/checkpoints/step07.json",
   },
+  {
+    id: "step08",
+    lessonPath: "lessons/step08-causal-lm-prefill.md",
+    checkpointPath: "lessons/checkpoints/step08.json",
+  },
 ];
 
 marked.use({
