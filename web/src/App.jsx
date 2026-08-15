@@ -31,6 +31,26 @@ const stepPresentation = {
     kicker: "FOUNDATION",
     duration: "约 45 分钟 · CPU ONLY",
   },
+  step02: {
+    number: "02",
+    progress: 14.28,
+    label: "BYTE-LEVEL BPE",
+    title: "Tokenizer",
+    summary: "把文本编码成 Qwen3 token IDs",
+    labLabel: "Step 02 Tokenizer 实验台",
+    kicker: "TEXT INPUT",
+    duration: "约 50 分钟 · CPU ONLY",
+  },
+  step03: {
+    number: "03",
+    progress: 21.42,
+    label: "BASIC NUMPY LAYERS",
+    title: "基础层",
+    summary: "Embedding、RMSNorm 与 Linear",
+    labLabel: "Step 03 基础层实验台",
+    kicker: "TENSOR ENTRY",
+    duration: "约 45 分钟 · CPU ONLY",
+  },
 };
 
 const savedTheme = window.localStorage.getItem("qwen3-moe-theme");
@@ -282,7 +302,7 @@ function Lab({ checkpoint, previousCheckpoint, checkpointIndex, checkpoints, lab
 }
 
 export function App() {
-  const requestedStep = window.location.pathname.startsWith("/step01") ? "step01" : "step00";
+  const requestedStep = window.location.pathname.split("/").filter(Boolean)[0] ?? "step00";
   const step = content.steps.find((item) => item.id === requestedStep) ?? content.steps[0];
   const presentation = stepPresentation[step.id];
   const checkpoints = step.checkpoints;
@@ -401,7 +421,7 @@ export function App() {
                   </a>
                 );
               })}
-              <div className="course-next"><span>NEXT</span><strong>STEP 02 · TOKENIZER</strong><small>COMING SOON</small></div>
+              <div className="course-next"><span>NEXT</span><strong>STEP 04 · ROPE</strong><small>COMING SOON</small></div>
             </nav>
           )}
         </div>

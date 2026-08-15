@@ -10,7 +10,7 @@
 
 ## 当前内容
 
-Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置读取和 Safetensors 权重目录检查：
+Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置和权重读取，Step 02 实现 Qwen3 byte-level BPE Tokenizer，Step 03 实现 Embedding、RMSNorm 和 Linear 基础层：
 
 - `lessons/step00-inference-map.md`
 - `lessons/checkpoints/step00.json`
@@ -18,6 +18,12 @@ Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置读�
 - `src/qwen3_moe/checkpoint.py`
 - `lessons/step01-overview-config-weights.md`
 - `lessons/checkpoints/step01.json`
+- `src/qwen3_moe/tokenizer.py`
+- `lessons/step02-tokenizer.md`
+- `lessons/checkpoints/step02.json`
+- `src/qwen3_moe/layers.py`
+- `lessons/step03-basic-layers.md`
+- `lessons/checkpoints/step03.json`
 
 后续步骤会沿真实推理数据流继续累计实现：
 
@@ -32,6 +38,8 @@ Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置读�
 uv sync --locked --python 3.11.15
 uv run python scripts/generate_step00_assets.py
 uv run python scripts/generate_step01_assets.py
+uv run python scripts/generate_step02_assets.py
+uv run python scripts/generate_step03_assets.py
 uv run python scripts/validate_course_assets.py
 
 cd web

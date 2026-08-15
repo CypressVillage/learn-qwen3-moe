@@ -21,12 +21,12 @@
 ## 当前状态
 
 - 当前分支：`rewrite/visual-qwen3-moe-course`
-- Step 00、Step 01：完成；两章都已改为更贴近学生阅读的叙事，从 `Qwen/Qwen3-30B-A3B` 真实仓库内容切入，始终沿 prompt 到 next token 的数据流推进。
-- 当前源码：`config.py`、`checkpoint.py` 已实现并按教学主线精简，只保留结构配置、分片索引、Safetensors header、BF16/F16/F32/I32/I64 与按名称读取 tensor；其余推理模块为空文件骨架。
-- 当前正文：`lessons/step00-inference-map.md`、`lessons/step01-overview-config-weights.md`；Step 01 围绕“先读说明书，再找到第一块权重”展开，删去了提前出现的完整 forward、验收清单和生产级边界细节。
-- 当前阅读资产：Step 00 有 13 个逐文件建立空骨架的 checkpoint，Step 01 有 6 个 insert-only checkpoint。
-- 当前网站：Vite/React 静态入口 `/`、`/step00/` 与 `/step01/`；顶部课程进度可展开并在现有 Step 文章间导航；左侧源码阅读器包含可折叠文件夹树、文件导航和 Python 语法高亮，右侧展示教程，并支持持久化的深浅色主题切换与可读性优化的代码字体。
-- 下一步：实现 Step 02 Tokenizer，并持续回连 Step 00 推理地图。
+- Step 00、Step 01、Step 02、Step 03：完成；四章都从 `Qwen/Qwen3-30B-A3B` 真实仓库资产切入，始终沿 prompt 到 next token 的数据流推进。
+- 当前源码：`config.py`、`checkpoint.py`、`tokenizer.py`、`layers.py` 已实现并按教学主线精简；基础层包含纯 NumPy 的 `Embedding`、`RMSNorm`、`Linear`，让 token IDs 进入真实 Embedding 权重并为后续 Attention、MoE 提供归一化与投影积木；其余推理模块为空文件骨架。
+- 当前正文：`lessons/step00-inference-map.md`、`lessons/step01-overview-config-weights.md`、`lessons/step02-tokenizer.md`、`lessons/step03-basic-layers.md`；Step 03 围绕“让 token IDs 第一次进入模型权重”展开，依次解释 Embedding 查表、RMSNorm 的最后一维计算和 Linear 投影。
+- 当前阅读资产：Step 00 有 13 个逐文件建立空骨架的 checkpoint，Step 01 有 6 个 insert-only checkpoint，Step 02 有 8 个 insert-only checkpoint，Step 03 有 6 个 insert-only checkpoint。
+- 当前网站：Vite/React 静态入口 `/`、`/step00/`、`/step01/`、`/step02/` 与 `/step03/`；顶部课程进度可展开并在现有 Step 文章间导航；左侧源码阅读器包含可折叠文件夹树、文件导航和 Python 语法高亮，右侧展示教程，并支持持久化的深浅色主题切换与可读性优化的代码字体。
+- 下一步：实现 Step 04 RoPE，从 position IDs 构造旋转频率并把位置信息写入 Query 和 Key。
 
 ## 工作流程
 
@@ -59,8 +59,10 @@
 ```bash
 uv run python scripts/generate_step00_assets.py
 uv run python scripts/generate_step01_assets.py
+uv run python scripts/generate_step02_assets.py
+uv run python scripts/generate_step03_assets.py
 uv run python scripts/validate_course_assets.py
-uv run python -c "from qwen3_moe import Qwen3MoeConfig, SafetensorsCheckpoint"
+uv run python -c "from qwen3_moe import Embedding, Linear, Qwen3MoeConfig, Qwen3Tokenizer, RMSNorm, SafetensorsCheckpoint"
 ```
 
 `web/` 下：

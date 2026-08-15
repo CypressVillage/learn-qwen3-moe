@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "numpy==2.2.6",
+    "regex==2025.7.34",
 ]
 
 [build-system]

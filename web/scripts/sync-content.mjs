@@ -19,6 +19,16 @@ const stepSources = [
     lessonPath: "lessons/step01-overview-config-weights.md",
     checkpointPath: "lessons/checkpoints/step01.json",
   },
+  {
+    id: "step02",
+    lessonPath: "lessons/step02-tokenizer.md",
+    checkpointPath: "lessons/checkpoints/step02.json",
+  },
+  {
+    id: "step03",
+    lessonPath: "lessons/step03-basic-layers.md",
+    checkpointPath: "lessons/checkpoints/step03.json",
+  },
 ];
 
 marked.use({

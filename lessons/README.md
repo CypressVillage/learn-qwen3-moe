@@ -9,4 +9,4 @@
 
 课程入口：[Step 00：Qwen3 MoE 概览](step00-inference-map.md)。
 
-当前实现章节：[Step 01：配置和权重目录](step01-overview-config-weights.md)。
+当前实现章节：[Step 03：基础层](step03-basic-layers.md)。
