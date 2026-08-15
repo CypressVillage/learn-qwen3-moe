@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from qwen3_moe.attention import Qwen3Attention
+from qwen3_moe.cache import KVCache
 from qwen3_moe.checkpoint import SafetensorsCheckpoint
 from qwen3_moe.config import Qwen3MoeConfig
 from qwen3_moe.layers import Embedding, Linear
@@ -77,6 +78,39 @@ class Qwen3DecoderLayer:
             raise ValueError("decoder layer input hidden size does not match config")
 
         hidden_states = self._attention_block(hidden_states, position_ids)
+        return self._moe_block(hidden_states)
+
+    def _cached_attention_block(
+        self,
+        hidden_states: np.ndarray,
+        position_ids: np.ndarray,
+        cache: KVCache,
+        layer_index: int,
+    ) -> np.ndarray:
+        residual = hidden_states
+        hidden_states = self.input_layernorm(hidden_states)
+        hidden_states = self.self_attention.cached(
+            hidden_states, position_ids, cache, layer_index
+        )
+        return residual + hidden_states
+
+    def cached(
+        self,
+        hidden_states: np.ndarray,
+        position_ids: np.ndarray,
+        cache: KVCache,
+        layer_index: int,
+    ) -> np.ndarray:
+        """Run one decoder layer while updating its Key/Value cache."""
+        hidden_states = np.asarray(hidden_states)
+        if hidden_states.ndim != 3:
+            raise ValueError("decoder layer input must have shape [B,S,D]")
+        if hidden_states.shape[-1] != self.hidden_size:
+            raise ValueError("decoder layer input hidden size does not match config")
+
+        hidden_states = self._cached_attention_block(
+            hidden_states, position_ids, cache, layer_index
+        )
         return self._moe_block(hidden_states)
 
 
@@ -170,5 +204,31 @@ class Qwen3MoeForCausalLM:
         hidden_states = self.embed_tokens(token_ids)
         for layer in self.layers:
             hidden_states = layer(hidden_states, position_ids)
+        hidden_states = self.norm(hidden_states)
+        return self.lm_head(hidden_states)
+
+    @staticmethod
+    def _cached_position_ids(
+        token_ids: np.ndarray, cache: KVCache
+    ) -> np.ndarray:
+        batch_size, sequence_length = token_ids.shape
+        start = cache.sequence_length
+        positions = np.arange(start, start + sequence_length, dtype=np.int64)
+        return np.broadcast_to(positions, (batch_size, sequence_length))
+
+    def cached(self, token_ids: np.ndarray, cache: KVCache) -> np.ndarray:
+        """Run prefill or decode while appending every layer's Key/Value state."""
+        token_ids = np.asarray(token_ids)
+        if token_ids.ndim != 2:
+            raise ValueError("Causal LM input must have shape [B,S]")
+        if token_ids.shape[1] == 0:
+            raise ValueError("Causal LM requires at least one token")
+
+        position_ids = self._cached_position_ids(token_ids, cache)
+        hidden_states = self.embed_tokens(token_ids)
+        for layer_index, layer in enumerate(self.layers):
+            hidden_states = layer.cached(
+                hidden_states, position_ids, cache, layer_index
+            )
         hidden_states = self.norm(hidden_states)
         return self.lm_head(hidden_states)

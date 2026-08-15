@@ -132,6 +132,16 @@ const stepPresentation = {
     kicker: "INCREMENTAL CONTEXT",
     duration: "约 55 分钟 · CPU ONLY",
   },
+  step12: {
+    number: "12",
+    progress: 85.71,
+    label: "FULL MODEL CACHED DECODE",
+    title: "Cached Decode",
+    summary: "把 cache 与绝对位置贯穿完整模型",
+    labLabel: "Step 12 Cached Decode 实验台",
+    kicker: "MODEL INCREMENT",
+    duration: "约 55 分钟 · CPU ONLY",
+  },
 };
 
 const savedTheme = window.localStorage.getItem("qwen3-moe-theme");
@@ -529,7 +539,7 @@ export function App() {
                   </a>
                 );
               })}
-              <div className="course-next"><span>NEXT</span><strong>STEP 12 · CACHED DECODE</strong><small>COMING SOON</small></div>
+              <div className="course-next"><span>NEXT</span><strong>STEP 13 · GENERATION LOOP</strong><small>COMING SOON</small></div>
             </nav>
           )}
         </div>

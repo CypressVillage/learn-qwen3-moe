@@ -12,7 +12,7 @@
 
 ## 当前内容
 
-Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置和权重读取，Step 02 实现 Qwen3 byte-level BPE Tokenizer，Step 03 实现 Embedding、RMSNorm 和 Linear 基础层，Step 04 用 RoPE 把位置信息写入 Query 和 Key，Step 05 实现带 QK Norm、RoPE 与 causal mask 的 GQA Attention，Step 06 实现 top-k Router 与 SwiGLU Experts 组成的 Sparse MoE，Step 07 把 RMSNorm、Attention、MoE 与两条 residual 组装成 Decoder Layer，Step 08 把完整模型串到 vocabulary logits，Step 09 再用 greedy、temperature 与随机采样选择 next token，Step 10 为每层保存并追加 Attention Key 与 Value，Step 11 让新 Query 读取缓存历史：
+Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置和权重读取，Step 02 实现 Qwen3 byte-level BPE Tokenizer，Step 03 实现 Embedding、RMSNorm 和 Linear 基础层，Step 04 用 RoPE 把位置信息写入 Query 和 Key，Step 05 实现带 QK Norm、RoPE 与 causal mask 的 GQA Attention，Step 06 实现 top-k Router 与 SwiGLU Experts 组成的 Sparse MoE，Step 07 把 RMSNorm、Attention、MoE 与两条 residual 组装成 Decoder Layer，Step 08 把完整模型串到 vocabulary logits，Step 09 再用 greedy、temperature 与随机采样选择 next token，Step 10 为每层保存并追加 Attention Key 与 Value，Step 11 让新 Query 读取缓存历史，Step 12 将缓存与绝对位置贯穿完整模型：
 
 - `lessons/step00-inference-map.md`
 - `lessons/checkpoints/step00.json`
@@ -48,6 +48,8 @@ Step 00 先建立完整推理地图与空文件骨架，Step 01 完成配置和�
 - `lessons/checkpoints/step10.json`
 - `lessons/step11-cached-attention.md`
 - `lessons/checkpoints/step11.json`
+- `lessons/step12-cached-decode.md`
+- `lessons/checkpoints/step12.json`
 
 后续步骤会沿真实推理数据流继续累计实现：
 
@@ -72,6 +74,7 @@ uv run python scripts/generate_step08_assets.py
 uv run python scripts/generate_step09_assets.py
 uv run python scripts/generate_step10_assets.py
 uv run python scripts/generate_step11_assets.py
+uv run python scripts/generate_step12_assets.py
 uv run python scripts/validate_course_assets.py
 
 cd web
