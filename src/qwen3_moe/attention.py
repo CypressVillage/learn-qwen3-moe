@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from qwen3_moe.cache import KVCache
 from qwen3_moe.config import Qwen3MoeConfig
 from qwen3_moe.layers import Linear, RMSNorm
 from qwen3_moe.rope import RotaryEmbedding, apply_rotary_position_embedding
@@ -101,6 +102,12 @@ class Qwen3Attention:
         future_tokens = np.triu(
             np.ones((sequence_length, sequence_length), dtype=bool), k=1
         )
+        if key.shape[2] != sequence_length:
+            cached_length = key.shape[2] - sequence_length
+            future_tokens = np.triu(
+                np.ones((sequence_length, key.shape[2]), dtype=bool),
+                k=cached_length + 1,
+            )
         scores = np.where(future_tokens[None, None, :, :], -np.inf, scores)
         scores -= np.max(scores, axis=-1, keepdims=True)
         probabilities = np.exp(scores)
@@ -123,6 +130,35 @@ class Qwen3Attention:
 
         query, key, value = self._project_query_key_value(hidden_states)
         query, key = self._apply_positions(query, key, position_ids)
+        attended = self._scaled_dot_product_attention(query, key, value)
+        batch_size, _, sequence_length, _ = attended.shape
+        merged = attended.transpose(0, 2, 1, 3).reshape(
+            batch_size, sequence_length, self.num_heads * self.head_dim
+        )
+        return self.o_proj(merged)
+
+    def cached(
+        self,
+        hidden_states: np.ndarray,
+        position_ids: np.ndarray,
+        cache: KVCache,
+        layer_index: int,
+    ) -> np.ndarray:
+        """Attend with Key/Value states appended to one layer's cache."""
+        hidden_states = np.asarray(hidden_states)
+        position_ids = np.asarray(position_ids)
+        if hidden_states.ndim != 3:
+            raise ValueError("attention input must have shape [B,S,D]")
+        if hidden_states.shape[-1] != self.hidden_size:
+            raise ValueError("attention input hidden size does not match config")
+        if hidden_states.shape[1] == 0:
+            raise ValueError("attention requires at least one token")
+        if position_ids.shape != hidden_states.shape[:2]:
+            raise ValueError("position IDs must match attention batch and sequence")
+
+        query, key, value = self._project_query_key_value(hidden_states)
+        query, key = self._apply_positions(query, key, position_ids)
+        key, value = cache.update(layer_index, key, value)
         attended = self._scaled_dot_product_attention(query, key, value)
         batch_size, _, sequence_length, _ = attended.shape
         merged = attended.transpose(0, 2, 1, 3).reshape(

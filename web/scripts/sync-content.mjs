@@ -64,6 +64,11 @@ const stepSources = [
     lessonPath: "lessons/step10-kv-cache.md",
     checkpointPath: "lessons/checkpoints/step10.json",
   },
+  {
+    id: "step11",
+    lessonPath: "lessons/step11-cached-attention.md",
+    checkpointPath: "lessons/checkpoints/step11.json",
+  },
 ];
 
 marked.use({

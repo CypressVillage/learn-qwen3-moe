@@ -9,4 +9,4 @@
 
 课程入口：[Step 00：Qwen3 MoE 概览](step00-inference-map.md)。
 
-当前实现章节：[Step 10：KV Cache](step10-kv-cache.md)。
+当前实现章节：[Step 11：Cached Attention](step11-cached-attention.md)。

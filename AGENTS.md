@@ -39,13 +39,13 @@
 ## 当前状态
 
 - 当前分支：`master`
-- Step 00 至 Step 10：完成；十一章始终沿 prompt 到 next token、再到缓存解码的数据流推进。
-- 当前源码：基础模块、完整 prefill 模型与 token selection 已实现；`cache.py` 新增按 Decoder Layer 保存、读取和沿 sequence 维追加 Key/Value 的 `KVCache`，并校验所有已填充层的共享缓存长度；Attention 尚未接入缓存。
-- 当前正文：已完成 `lessons/step00-inference-map.md` 至 `lessons/step10-kv-cache.md`；Step 10 解释为何缓存 Key/Value、GQA 缓存 shape、按层槽位、追加维度与 cached length。
-- 当前阅读资产：Step 00 至 Step 09 checkpoint 保持不变，Step 10 有 6 个 insert-only checkpoint。
-- 当前网站：Vite/React 静态入口 `/` 与 `/step00/` 至 `/step10/`；课程导航、章节前后链接与源码阅读器已接入 Step 10。
+- Step 00 至 Step 11：完成；课程已经从完整 prefill 推进到单层 Cached Attention。
+- 当前源码：`KVCache` 保存每层 GQA Key/Value；`Qwen3Attention` 可选接收 cache 与 layer index，在 RoPE 后追加状态，并用矩形 causal mask 让新 Query 读取历史 Key/Value。
+- 当前正文：已完成 `lessons/step00-inference-map.md` 至 `lessons/step11-cached-attention.md`；Step 11 对比 prefill 与 decode shape，解释缓存写入位置、未展开 GQA 状态和矩形 mask。
+- 当前阅读资产：Step 11 有 3 个 insert-only checkpoint，历史 checkpoint 保持逐行可累积。
+- 当前网站：Vite/React 静态入口 `/` 与 `/step00/` 至 `/step11/`；课程导航与源码阅读器已接入 Step 11。
 - 当前规划：主线固定为 Step 00 至 Step 14；推理优化内容独立放入后日谈，不计入主线进度。
-- 下一步：实现 Step 11 Cached Attention，让新 Query 读取缓存中的历史 Key、Value。
+- 下一步：实现 Step 12 完整模型 Cached Decode，把 cache 与绝对位置贯穿 Decoder Layers。
 
 ## 工作流程
 
@@ -87,6 +87,7 @@ uv run python scripts/generate_step07_assets.py
 uv run python scripts/generate_step08_assets.py
 uv run python scripts/generate_step09_assets.py
 uv run python scripts/generate_step10_assets.py
+uv run python scripts/generate_step11_assets.py
 uv run python scripts/validate_course_assets.py
 uv run python -c "from qwen3_moe import Embedding, Linear, Qwen3Attention, Qwen3DecoderLayer, Qwen3MoeConfig, Qwen3MoeExperts, Qwen3MoeForCausalLM, Qwen3MoeRouter, Qwen3SparseMoeBlock, Qwen3Tokenizer, RMSNorm, RotaryEmbedding, SafetensorsCheckpoint, apply_rotary_position_embedding, greedy_next_token, last_token_logits, next_token_probabilities, sample_next_token"
 ```

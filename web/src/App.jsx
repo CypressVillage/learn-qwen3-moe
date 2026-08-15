@@ -122,6 +122,16 @@ const stepPresentation = {
     kicker: "DECODING MEMORY",
     duration: "约 45 分钟 · CPU ONLY",
   },
+  step11: {
+    number: "11",
+    progress: 78.57,
+    label: "CACHED ATTENTION",
+    title: "Cached Attention",
+    summary: "让新 Query 读取历史 Key 与 Value",
+    labLabel: "Step 11 Cached Attention 实验台",
+    kicker: "INCREMENTAL CONTEXT",
+    duration: "约 55 分钟 · CPU ONLY",
+  },
 };
 
 const savedTheme = window.localStorage.getItem("qwen3-moe-theme");
@@ -519,7 +529,7 @@ export function App() {
                   </a>
                 );
               })}
-              <div className="course-next"><span>NEXT</span><strong>STEP 11 · CACHED ATTENTION</strong><small>COMING SOON</small></div>
+              <div className="course-next"><span>NEXT</span><strong>STEP 12 · CACHED DECODE</strong><small>COMING SOON</small></div>
             </nav>
           )}
         </div>
