@@ -107,7 +107,7 @@ def generate() -> None:
         },
         {
             "id": "step01-config-validation",
-            "label": "解析并严格校验 config.json",
+            "label": "读取 config.json 并守住结构关系",
             "active_file": config_path,
             "focus_range": _focus_range(
                 config_validation[config_path], "def __post_init__", 53
@@ -117,7 +117,7 @@ def generate() -> None:
         },
         {
             "id": "step01-index-discovery",
-            "label": "发现单文件或分片权重目录",
+            "label": "用 index 找到参数所在分片",
             "active_file": checkpoint_path,
             "focus_range": _focus_range(
                 index_discovery[checkpoint_path], "def from_directory", 18
@@ -127,7 +127,7 @@ def generate() -> None:
         },
         {
             "id": "step01-header-validation",
-            "label": "验证 Safetensors header 和 byte ranges",
+            "label": "读取 Safetensors header",
             "active_file": checkpoint_path,
             "focus_range": _focus_range(
                 header_validation[checkpoint_path], "def _read_shard", 79
@@ -137,7 +137,7 @@ def generate() -> None:
         },
         {
             "id": "step01-load-tensor",
-            "label": "按名称只读取一个 tensor",
+            "label": "按名字只读取一个 tensor",
             "active_file": checkpoint_path,
             "focus_range": _focus_range(
                 tensor_loading[checkpoint_path], "def load_tensor", 24
