@@ -39,13 +39,13 @@
 ## 当前状态
 
 - 当前分支：`master`
-- Step 00、Step 01、Step 02、Step 03、Step 04、Step 05、Step 06、Step 07、Step 08、Step 09：完成；十章都从 `Qwen/Qwen3-30B-A3B` 真实仓库资产切入，始终沿 prompt 到 next token 的数据流推进。
-- 当前源码：`config.py`、`checkpoint.py`、`tokenizer.py`、`layers.py`、`rope.py`、`attention.py`、`moe.py` 已实现基础模块，`model.py` 已实现 `Qwen3DecoderLayer` 与完整 `Qwen3MoeForCausalLM`，`generation.py` 已实现最后位置 logits 提取、greedy decoding、temperature softmax 与随机采样；当前可从整段 prompt 得到一个 next-token ID，KV Cache 相关模块仍为空文件骨架。
-- 当前正文：已完成 `lessons/step00-inference-map.md` 至 `lessons/step09-next-token-selection.md`；Step 09 围绕“从 logits 选出一个 token”展开，依次解释最后位置、argmax、temperature、稳定 softmax、categorical sampling 与可复现 RNG。
-- 当前阅读资产：Step 00 有 13 个逐文件建立空骨架的 checkpoint，Step 01 有 6 个 insert-only checkpoint，Step 02 有 8 个 insert-only checkpoint，Step 03 有 6 个 insert-only checkpoint，Step 04 有 6 个 insert-only checkpoint，Step 05 有 7 个 insert-only checkpoint，Step 06 有 7 个 insert-only checkpoint，Step 07 有 6 个 insert-only checkpoint，Step 08 有 7 个 insert-only checkpoint，Step 09 有 6 个 insert-only checkpoint。
-- 当前网站：Vite/React 静态入口 `/` 与 `/step00/` 至 `/step09/`；顶部课程进度可展开并在现有 Step 文章间导航，正文底部提供上一章、下一章入口；左侧源码阅读器包含可折叠文件夹树、文件导航和 Python 语法高亮，右侧展示教程，并支持持久化的深浅色主题切换与可读性优化的代码字体；`master` 推送后由 GitHub Actions 构建并部署到 GitHub Pages。
+- Step 00 至 Step 10：完成；十一章始终沿 prompt 到 next token、再到缓存解码的数据流推进。
+- 当前源码：基础模块、完整 prefill 模型与 token selection 已实现；`cache.py` 新增按 Decoder Layer 保存、读取和沿 sequence 维追加 Key/Value 的 `KVCache`，并校验所有已填充层的共享缓存长度；Attention 尚未接入缓存。
+- 当前正文：已完成 `lessons/step00-inference-map.md` 至 `lessons/step10-kv-cache.md`；Step 10 解释为何缓存 Key/Value、GQA 缓存 shape、按层槽位、追加维度与 cached length。
+- 当前阅读资产：Step 00 至 Step 09 checkpoint 保持不变，Step 10 有 6 个 insert-only checkpoint。
+- 当前网站：Vite/React 静态入口 `/` 与 `/step00/` 至 `/step10/`；课程导航、章节前后链接与源码阅读器已接入 Step 10。
 - 当前规划：主线固定为 Step 00 至 Step 14；推理优化内容独立放入后日谈，不计入主线进度。
-- 下一步：实现 Step 10 KV Cache 数据结构，为每层保存和追加 Attention Key、Value。
+- 下一步：实现 Step 11 Cached Attention，让新 Query 读取缓存中的历史 Key、Value。
 
 ## 工作流程
 
@@ -86,6 +86,7 @@ uv run python scripts/generate_step06_assets.py
 uv run python scripts/generate_step07_assets.py
 uv run python scripts/generate_step08_assets.py
 uv run python scripts/generate_step09_assets.py
+uv run python scripts/generate_step10_assets.py
 uv run python scripts/validate_course_assets.py
 uv run python -c "from qwen3_moe import Embedding, Linear, Qwen3Attention, Qwen3DecoderLayer, Qwen3MoeConfig, Qwen3MoeExperts, Qwen3MoeForCausalLM, Qwen3MoeRouter, Qwen3SparseMoeBlock, Qwen3Tokenizer, RMSNorm, RotaryEmbedding, SafetensorsCheckpoint, apply_rotary_position_embedding, greedy_next_token, last_token_logits, next_token_probabilities, sample_next_token"
 ```

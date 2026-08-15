@@ -37,6 +37,7 @@ def _package_without_decoder_layer() -> str:
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
         if "qwen3_moe.model" not in line
         and "qwen3_moe.generation" not in line
+        and "qwen3_moe.cache" not in line
         and '"Qwen3DecoderLayer"' not in line
         and '"Qwen3MoeForCausalLM"' not in line
         and not any(
@@ -46,6 +47,7 @@ def _package_without_decoder_layer() -> str:
                 "last_token_logits",
                 "next_token_probabilities",
                 "sample_next_token",
+                "KVCache",
             )
         )
     )
@@ -57,6 +59,7 @@ def _package_with_decoder_layer() -> str:
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
         if "Qwen3MoeForCausalLM" not in line
         and "qwen3_moe.generation" not in line
+        and "qwen3_moe.cache" not in line
         and not any(
             f'"{name}"' in line
             for name in (
@@ -64,6 +67,7 @@ def _package_with_decoder_layer() -> str:
                 "last_token_logits",
                 "next_token_probabilities",
                 "sample_next_token",
+                "KVCache",
             )
         )
     )

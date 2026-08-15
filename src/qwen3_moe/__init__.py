@@ -1,6 +1,7 @@
 """Qwen3 MoE inference framework."""
 
 from qwen3_moe.attention import Qwen3Attention
+from qwen3_moe.cache import KVCache
 from qwen3_moe.checkpoint import SafetensorsCheckpoint, TensorInfo
 from qwen3_moe.config import Qwen3MoeConfig
 from qwen3_moe.generation import greedy_next_token, last_token_logits, next_token_probabilities, sample_next_token
@@ -13,6 +14,7 @@ from qwen3_moe.tokenizer import Qwen3Tokenizer
 
 __all__ = [
     "Embedding",
+    "KVCache",
     "Linear",
     "Qwen3Attention",
     "Qwen3DecoderLayer",

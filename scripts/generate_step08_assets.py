@@ -52,6 +52,7 @@ def _package_without_causal_lm() -> str:
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
         if "Qwen3MoeForCausalLM" not in line
         and "qwen3_moe.generation" not in line
+        and "qwen3_moe.cache" not in line
         and not any(
             f'"{name}"' in line
             for name in (
@@ -59,6 +60,7 @@ def _package_without_causal_lm() -> str:
                 "last_token_logits",
                 "next_token_probabilities",
                 "sample_next_token",
+                "KVCache",
             )
         )
     )
@@ -135,6 +137,7 @@ def generate() -> None:
             line
             for line in _source_text(package_path).splitlines(keepends=True)
             if "qwen3_moe.generation" not in line
+            and "qwen3_moe.cache" not in line
             and not any(
                 f'"{name}"' in line
                 for name in (
@@ -142,6 +145,7 @@ def generate() -> None:
                     "last_token_logits",
                     "next_token_probabilities",
                     "sample_next_token",
+                    "KVCache",
                 )
             )
         ),

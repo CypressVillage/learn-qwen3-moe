@@ -59,6 +59,11 @@ const stepSources = [
     lessonPath: "lessons/step09-next-token-selection.md",
     checkpointPath: "lessons/checkpoints/step09.json",
   },
+  {
+    id: "step10",
+    lessonPath: "lessons/step10-kv-cache.md",
+    checkpointPath: "lessons/checkpoints/step10.json",
+  },
 ];
 
 marked.use({

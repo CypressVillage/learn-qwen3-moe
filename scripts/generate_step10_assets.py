@@ -1,4 +1,4 @@
-"""Generate the Step 09 cumulative next-token selection checkpoints."""
+"""Generate the Step 10 cumulative KV Cache checkpoints."""
 
 from __future__ import annotations
 
@@ -6,16 +6,11 @@ import inspect
 import json
 from pathlib import Path
 
-from qwen3_moe.generation import (
-    greedy_next_token,
-    last_token_logits,
-    next_token_probabilities,
-    sample_next_token,
-)
+from qwen3_moe.cache import KVCache
 
 
 ROOT = Path(__file__).parents[1]
-CHECKPOINT_PATH = ROOT / "lessons" / "checkpoints" / "step09.json"
+CHECKPOINT_PATH = ROOT / "lessons" / "checkpoints" / "step10.json"
 
 
 def _source_text(relative_path: str) -> str:
@@ -23,27 +18,18 @@ def _source_text(relative_path: str) -> str:
 
 
 def _through(symbol: object) -> str:
-    relative_path = "src/qwen3_moe/generation.py"
+    relative_path = "src/qwen3_moe/cache.py"
     lines = _source_text(relative_path).splitlines(keepends=True)
     _, start = inspect.getsourcelines(symbol)
     symbol_lines = inspect.getsource(symbol).splitlines(keepends=True)
     return "".join(lines[: start - 1 + len(symbol_lines)])
 
 
-def _package_without_generation() -> str:
-    symbols = (
-        "greedy_next_token",
-        "last_token_logits",
-        "next_token_probabilities",
-        "sample_next_token",
-    )
+def _package_without_cache() -> str:
     return "".join(
         line
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
-        if "qwen3_moe.generation" not in line
-        and "qwen3_moe.cache" not in line
-        and '"KVCache"' not in line
-        and not any(f'"{symbol}"' in line for symbol in symbols)
+        if "qwen3_moe.cache" not in line and '"KVCache"' not in line
     )
 
 
@@ -77,54 +63,40 @@ def generate() -> None:
         "src/qwen3_moe/moe.py",
         "src/qwen3_moe/model.py",
         "src/qwen3_moe/generation.py",
+        "src/qwen3_moe/cache.py",
         "src/qwen3_moe/__init__.py",
     ]
-    generation_path = "src/qwen3_moe/generation.py"
+    cache_path = "src/qwen3_moe/cache.py"
     package_path = "src/qwen3_moe/__init__.py"
     initial = {
         relative_path: (
             ""
-            if relative_path == generation_path
-            else _package_without_generation()
+            if relative_path == cache_path
+            else _package_without_cache()
             if relative_path == package_path
             else _source_text(relative_path)
         )
         for relative_path in source_files
     }
-    final_logits = {
-        **initial,
-        generation_path: _through(last_token_logits),
-    }
-    greedy = {
-        **final_logits,
-        generation_path: _through(greedy_next_token),
-    }
-    probabilities = {
-        **greedy,
-        generation_path: _through(next_token_probabilities),
-    }
-    sampling = {
-        **probabilities,
-        generation_path: _source_text(generation_path),
-    }
-    package_export = {
-        **sampling,
-        package_path: _source_text(package_path),
-    }
+    storage = {**initial, cache_path: _through(KVCache.__init__)}
+    lookup = {**storage, cache_path: _through(KVCache.get)}
+    append = {**lookup, cache_path: _through(KVCache.update)}
+    length = {**append, cache_path: _source_text(cache_path)}
+    package_export = {**length, package_path: _source_text(package_path)}
     staged = [
-        ("step09-ready", "从完整 vocabulary logits 进入 token 选择", generation_path, initial, "", 0, "initial", []),
-        ("step09-final-logits", "只取读完整段 prompt 后的 logits", generation_path, final_logits, "def last_token_logits", 13, "insert", [generation_path]),
-        ("step09-greedy", "用 argmax 选择分数最高的 token", generation_path, greedy, "def greedy_next_token", 4, "insert", [generation_path]),
-        ("step09-temperature", "用 temperature 和稳定 softmax 得到概率", generation_path, probabilities, "def next_token_probabilities", 16, "insert", [generation_path]),
-        ("step09-sampling", "从 categorical distribution 采样 token", generation_path, sampling, "def sample_next_token", 20, "insert", [generation_path]),
-        ("step09-package", "从包入口导出 next-token selection", package_path, package_export, "greedy_next_token", 22, "insert", [package_path]),
+        ("step10-ready", "从 next token 进入每层 KV 状态保存", cache_path, initial, "", 0, "initial", []),
+        ("step10-storage", "为每个 Decoder Layer 建立 Key/Value 槽位", cache_path, storage, "class KVCache", 17, "insert", [cache_path]),
+        ("step10-lookup", "读取某一层已经保存的 Key 和 Value", cache_path, lookup, "def get", 11, "insert", [cache_path]),
+        ("step10-append", "沿 sequence 维追加新 token 的 Key/Value", cache_path, append, "def update", 29, "insert", [cache_path]),
+        ("step10-length", "暴露所有层一致的缓存序列长度", cache_path, length, "def sequence_length", 10, "insert", [cache_path]),
+        ("step10-package", "从包入口导出 KV Cache", package_path, package_export, "KVCache", 18, "insert", [package_path]),
     ]
     checkpoints = []
     for checkpoint_id, label, active_file, contents, marker, count, kind, files in staged:
         checkpoints.append(
             {
                 "id": checkpoint_id,
-                "step": "step09",
+                "step": "step10",
                 "label": label,
                 "active_file": active_file,
                 "focus_range": (

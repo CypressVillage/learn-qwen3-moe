@@ -32,6 +32,7 @@ def _package_without_moe() -> str:
         if "qwen3_moe.moe" not in line
         and "qwen3_moe.model" not in line
         and "qwen3_moe.generation" not in line
+        and "qwen3_moe.cache" not in line
         and '"Qwen3MoeExperts"' not in line
         and '"Qwen3MoeRouter"' not in line
         and '"Qwen3SparseMoeBlock"' not in line
@@ -44,6 +45,7 @@ def _package_without_moe() -> str:
                 "last_token_logits",
                 "next_token_probabilities",
                 "sample_next_token",
+                "KVCache",
             )
         )
     )
@@ -55,6 +57,7 @@ def _package_through_moe() -> str:
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
         if "qwen3_moe.model" not in line
         and "qwen3_moe.generation" not in line
+        and "qwen3_moe.cache" not in line
         and '"Qwen3DecoderLayer"' not in line
         and '"Qwen3MoeForCausalLM"' not in line
         and not any(
@@ -64,6 +67,7 @@ def _package_through_moe() -> str:
                 "last_token_logits",
                 "next_token_probabilities",
                 "sample_next_token",
+                "KVCache",
             )
         )
     )

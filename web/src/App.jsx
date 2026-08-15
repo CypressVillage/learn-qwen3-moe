@@ -112,6 +112,16 @@ const stepPresentation = {
     kicker: "DECODING POLICY",
     duration: "约 45 分钟 · CPU ONLY",
   },
+  step10: {
+    number: "10",
+    progress: 71.42,
+    label: "KEY VALUE CACHE",
+    title: "KV Cache",
+    summary: "按层保存并追加 Attention Key 与 Value",
+    labLabel: "Step 10 KV Cache 实验台",
+    kicker: "DECODING MEMORY",
+    duration: "约 45 分钟 · CPU ONLY",
+  },
 };
 
 const savedTheme = window.localStorage.getItem("qwen3-moe-theme");
@@ -509,7 +519,7 @@ export function App() {
                   </a>
                 );
               })}
-              <div className="course-next"><span>NEXT</span><strong>STEP 10 · KV CACHE</strong><small>COMING SOON</small></div>
+              <div className="course-next"><span>NEXT</span><strong>STEP 11 · CACHED ATTENTION</strong><small>COMING SOON</small></div>
             </nav>
           )}
         </div>
