@@ -21,12 +21,12 @@
 ## 当前状态
 
 - 当前分支：`rewrite/visual-qwen3-moe-course`
-- Step 00、Step 01、Step 02、Step 03：完成；四章都从 `Qwen/Qwen3-30B-A3B` 真实仓库资产切入，始终沿 prompt 到 next token 的数据流推进。
-- 当前源码：`config.py`、`checkpoint.py`、`tokenizer.py`、`layers.py` 已实现并按教学主线精简；基础层包含纯 NumPy 的 `Embedding`、`RMSNorm`、`Linear`，让 token IDs 进入真实 Embedding 权重并为后续 Attention、MoE 提供归一化与投影积木；其余推理模块为空文件骨架。
-- 当前正文：`lessons/step00-inference-map.md`、`lessons/step01-overview-config-weights.md`、`lessons/step02-tokenizer.md`、`lessons/step03-basic-layers.md`；Step 03 围绕“让 token IDs 第一次进入模型权重”展开，依次解释 Embedding 查表、RMSNorm 的最后一维计算和 Linear 投影。
-- 当前阅读资产：Step 00 有 13 个逐文件建立空骨架的 checkpoint，Step 01 有 6 个 insert-only checkpoint，Step 02 有 8 个 insert-only checkpoint，Step 03 有 6 个 insert-only checkpoint。
-- 当前网站：Vite/React 静态入口 `/`、`/step00/`、`/step01/`、`/step02/` 与 `/step03/`；顶部课程进度可展开并在现有 Step 文章间导航，正文底部提供上一章、下一章入口；左侧源码阅读器包含可折叠文件夹树、文件导航和 Python 语法高亮，右侧展示教程，并支持持久化的深浅色主题切换与可读性优化的代码字体；`master` 推送后由 GitHub Actions 构建并部署到 GitHub Pages。
-- 下一步：实现 Step 04 RoPE，从 position IDs 构造旋转频率并把位置信息写入 Query 和 Key。
+- Step 00、Step 01、Step 02、Step 03、Step 04：完成；五章都从 `Qwen/Qwen3-30B-A3B` 真实仓库资产切入，始终沿 prompt 到 next token 的数据流推进。
+- 当前源码：`config.py`、`checkpoint.py`、`tokenizer.py`、`layers.py`、`rope.py` 已实现并按教学主线精简；RoPE 使用纯 NumPy 从 position IDs 构造 cosine/sine，并在允许 Q/K head 数不同的前提下旋转 Query 和 Key；其余推理模块为空文件骨架。
+- 当前正文：`lessons/step00-inference-map.md`、`lessons/step01-overview-config-weights.md`、`lessons/step02-tokenizer.md`、`lessons/step03-basic-layers.md`、`lessons/step04-rope.md`；Step 04 围绕“把 token 的位置写进 Query 和 Key”展开，依次解释逆频率、position angles、half-split 旋转和 GQA 广播。
+- 当前阅读资产：Step 00 有 13 个逐文件建立空骨架的 checkpoint，Step 01 有 6 个 insert-only checkpoint，Step 02 有 8 个 insert-only checkpoint，Step 03 有 6 个 insert-only checkpoint，Step 04 有 6 个 insert-only checkpoint。
+- 当前网站：Vite/React 静态入口 `/`、`/step00/`、`/step01/`、`/step02/`、`/step03/` 与 `/step04/`；顶部课程进度可展开并在现有 Step 文章间导航，正文底部提供上一章、下一章入口；左侧源码阅读器包含可折叠文件夹树、文件导航和 Python 语法高亮，右侧展示教程，并支持持久化的深浅色主题切换与可读性优化的代码字体；`master` 推送后由 GitHub Actions 构建并部署到 GitHub Pages。
+- 下一步：实现 Step 05 GQA Attention，从真实 Q/K/V 权重开始，加入 QK Norm、RoPE、causal mask 和注意力加权。
 
 ## 工作流程
 
@@ -61,8 +61,9 @@ uv run python scripts/generate_step00_assets.py
 uv run python scripts/generate_step01_assets.py
 uv run python scripts/generate_step02_assets.py
 uv run python scripts/generate_step03_assets.py
+uv run python scripts/generate_step04_assets.py
 uv run python scripts/validate_course_assets.py
-uv run python -c "from qwen3_moe import Embedding, Linear, Qwen3MoeConfig, Qwen3Tokenizer, RMSNorm, SafetensorsCheckpoint"
+uv run python -c "from qwen3_moe import Embedding, Linear, Qwen3MoeConfig, Qwen3Tokenizer, RMSNorm, RotaryEmbedding, SafetensorsCheckpoint, apply_rotary_position_embedding"
 ```
 
 `web/` 下：

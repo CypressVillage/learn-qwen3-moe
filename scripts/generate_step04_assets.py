@@ -1,4 +1,4 @@
-"""Generate the Step 03 cumulative basic-layer checkpoints."""
+"""Generate the Step 04 cumulative RoPE checkpoints."""
 
 from __future__ import annotations
 
@@ -6,45 +6,30 @@ import inspect
 import json
 from pathlib import Path
 
-from qwen3_moe.layers import Embedding, Linear, RMSNorm
+from qwen3_moe.rope import (
+    RotaryEmbedding,
+    _rotate_half,
+    apply_rotary_position_embedding,
+)
 
 
 ROOT = Path(__file__).parents[1]
-CHECKPOINT_PATH = ROOT / "lessons" / "checkpoints" / "step03.json"
+CHECKPOINT_PATH = ROOT / "lessons" / "checkpoints" / "step04.json"
 
 
 def _source_text(relative_path: str) -> str:
     return (ROOT / relative_path).read_text(encoding="utf-8")
 
 
-def _through(method: object) -> str:
-    relative_path = "src/qwen3_moe/layers.py"
+def _through(symbol: object) -> str:
+    relative_path = "src/qwen3_moe/rope.py"
     lines = _source_text(relative_path).splitlines(keepends=True)
-    _, start = inspect.getsourcelines(method)
-    method_lines = inspect.getsource(method).splitlines(keepends=True)
-    return "".join(lines[: start - 1 + len(method_lines)])
+    _, start = inspect.getsourcelines(symbol)
+    symbol_lines = inspect.getsource(symbol).splitlines(keepends=True)
+    return "".join(lines[: start - 1 + len(symbol_lines)])
 
 
-def _package_without_layers() -> str:
-    return "".join(
-        line
-        for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
-        if "qwen3_moe.layers" not in line
-        and "qwen3_moe.rope" not in line
-        and not any(
-            f'"{name}"' in line
-            for name in (
-                "Embedding",
-                "Linear",
-                "RMSNorm",
-                "RotaryEmbedding",
-                "apply_rotary_position_embedding",
-            )
-        )
-    )
-
-
-def _package_through_layers() -> str:
+def _package_without_rope() -> str:
     return "".join(
         line
         for line in _source_text("src/qwen3_moe/__init__.py").splitlines(keepends=True)
@@ -81,43 +66,45 @@ def generate() -> None:
         "src/qwen3_moe/checkpoint.py",
         "src/qwen3_moe/tokenizer.py",
         "src/qwen3_moe/layers.py",
+        "src/qwen3_moe/rope.py",
         "src/qwen3_moe/__init__.py",
     ]
-    config_path, checkpoint_path, tokenizer_path, layers_path, package_path = source_files
+    config_path, checkpoint_path, tokenizer_path, layers_path, rope_path, package_path = source_files
     initial = {
         config_path: _source_text(config_path),
         checkpoint_path: _source_text(checkpoint_path),
         tokenizer_path: _source_text(tokenizer_path),
-        layers_path: "",
-        package_path: _package_without_layers(),
-    }
-    embedding_weight = {
-        **initial,
-        layers_path: _through(Embedding.__init__),
-    }
-    embedding_lookup = {
-        **embedding_weight,
-        layers_path: _through(Embedding.__call__),
-    }
-    rmsnorm = {
-        **embedding_lookup,
-        layers_path: _through(RMSNorm.__call__),
-    }
-    linear = {
-        **rmsnorm,
         layers_path: _source_text(layers_path),
+        rope_path: "",
+        package_path: _package_without_rope(),
+    }
+    inverse_frequencies = {
+        **initial,
+        rope_path: _through(RotaryEmbedding.__init__),
+    }
+    position_angles = {
+        **inverse_frequencies,
+        rope_path: _through(RotaryEmbedding.__call__),
+    }
+    rotate_half = {
+        **position_angles,
+        rope_path: _through(_rotate_half),
+    }
+    apply_rotation = {
+        **rotate_half,
+        rope_path: _source_text(rope_path),
     }
     package_export = {
-        **linear,
-        package_path: _package_through_layers(),
+        **apply_rotation,
+        package_path: _source_text(package_path),
     }
     staged = [
-        ("step03-ready", "带着 token IDs 来到空基础层", layers_path, initial, "", 0, "initial", []),
-        ("step03-embedding-weight", "接住真实 Embedding 权重", layers_path, embedding_weight, "class Embedding", 10, "insert", [layers_path]),
-        ("step03-embedding-lookup", "用 token IDs 查出 hidden states", layers_path, embedding_lookup, "def __call__", 10, "insert", [layers_path]),
-        ("step03-rmsnorm", "按最后一维执行 RMSNorm", layers_path, rmsnorm, "class RMSNorm", 21, "insert", [layers_path]),
-        ("step03-linear", "把最后一维投影到新空间", layers_path, linear, "class Linear", 20, "insert", [layers_path]),
-        ("step03-package", "从包入口导出三个基础层", package_path, package_export, "qwen3_moe.layers", 12, "insert", [package_path]),
+        ("step04-ready", "带着 projected hidden states 来到空 RoPE", rope_path, initial, "", 0, "initial", []),
+        ("step04-inverse-frequencies", "为每个旋转平面建立逆频率", rope_path, inverse_frequencies, "class RotaryEmbedding", 16, "insert", [rope_path]),
+        ("step04-position-angles", "把 position IDs 展开成 cosine 与 sine", rope_path, position_angles, "def __call__", 14, "insert", [rope_path]),
+        ("step04-rotate-half", "把 head vector 的两半配成旋转平面", rope_path, rotate_half, "def _rotate_half", 4, "insert", [rope_path]),
+        ("step04-apply", "把位置信息同时写入 Query 和 Key", rope_path, apply_rotation, "def apply_rotary_position_embedding", 31, "insert", [rope_path]),
+        ("step04-package", "从包入口导出 RoPE 能力", package_path, package_export, "qwen3_moe.rope", 13, "insert", [package_path]),
     ]
     checkpoints = []
     for checkpoint_id, label, active_file, contents, marker, count, kind, files in staged:
@@ -129,7 +116,7 @@ def generate() -> None:
         checkpoints.append(
             {
                 "id": checkpoint_id,
-                "step": "step03",
+                "step": "step04",
                 "label": label,
                 "active_file": active_file,
                 "focus_range": focus,

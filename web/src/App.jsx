@@ -52,6 +52,16 @@ const stepPresentation = {
     kicker: "TENSOR ENTRY",
     duration: "约 45 分钟 · CPU ONLY",
   },
+  step04: {
+    number: "04",
+    progress: 28.57,
+    label: "ROTARY POSITION EMBEDDING",
+    title: "RoPE",
+    summary: "把位置信息写入 Query 和 Key",
+    labLabel: "Step 04 RoPE 实验台",
+    kicker: "POSITION SIGNAL",
+    duration: "约 45 分钟 · CPU ONLY",
+  },
 };
 
 const savedTheme = window.localStorage.getItem("qwen3-moe-theme");
@@ -449,7 +459,7 @@ export function App() {
                   </a>
                 );
               })}
-              <div className="course-next"><span>NEXT</span><strong>STEP 04 · ROPE</strong><small>COMING SOON</small></div>
+              <div className="course-next"><span>NEXT</span><strong>STEP 05 · ATTENTION</strong><small>COMING SOON</small></div>
             </nav>
           )}
         </div>

@@ -9,4 +9,4 @@
 
 课程入口：[Step 00：Qwen3 MoE 概览](step00-inference-map.md)。
 
-当前实现章节：[Step 03：基础层](step03-basic-layers.md)。
+当前实现章节：[Step 04：RoPE](step04-rope.md)。
