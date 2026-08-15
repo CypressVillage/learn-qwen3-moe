@@ -198,4 +198,4 @@ print(info.dtype, info.shape, info.shard)
 
 这一章还没有让模型生成任何东西，但地基已经有了。后面创建 Embedding、Attention 和 Expert 时，模块结构来自 `config`，参数数值来自 `checkpoint`。它们不再需要关心 JSON 怎样解析，也不需要关心某个权重藏在第几个分片。
 
-下一章继续顺着真实数据流往前走，开始实现 Tokenizer。模型目录已经能读，接下来该把用户输入的文字变成它真正接收的 token IDs 了。忘记这一块在全局哪里时，就回到 [Step 00 的完整推理地图](/step00/)。
+下一章继续顺着真实数据流往前走，开始实现 Tokenizer。模型目录已经能读，接下来该把用户输入的文字变成它真正接收的 token IDs 了。忘记这一块在全局哪里时，就回到 [Step 00 的完整推理地图](../step00/)。

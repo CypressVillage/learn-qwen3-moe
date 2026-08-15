@@ -278,4 +278,4 @@ Tokenizer.decode -> 输出文本
 
 暂时不用背更多。等写到 Attention 时再引入 heads 和 head dimension，写到 MoE 时再展开 token dispatch。现在知道 `input_ids -> hidden_states -> logits -> next_token` 这条 shape 主线就够了。
 
-下一章从最靠近磁盘的地方开始：[Step 01：配置和权重目录](/step01/)。我们先让代码读懂 `config.json`，再从 Safetensors 分片中准确找到一个真实 tensor。
+下一章从最靠近磁盘的地方开始：[Step 01：配置和权重目录](../step01/)。我们先让代码读懂 `config.json`，再从 Safetensors 分片中准确找到一个真实 tensor。

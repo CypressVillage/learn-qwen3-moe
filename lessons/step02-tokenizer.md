@@ -221,4 +221,4 @@ prompt 文本
   -> 输出文本
 ```
 
-现在文字已经变成了模型认识的整数，但这些整数还没有参加任何张量计算。下一章会实现 Embedding、RMSNorm 和 Linear 这些基础层，让 `input_ids` 第一次进入权重，变成贯穿 decoder 的 `hidden_states [B,S,D]`。如果 token、ID 和 hidden states 的关系开始混在一起，就回到 [Step 00 的完整推理地图](/step00/) 再看一次主线。
+现在文字已经变成了模型认识的整数，但这些整数还没有参加任何张量计算。下一章会实现 Embedding、RMSNorm 和 Linear 这些基础层，让 `input_ids` 第一次进入权重，变成贯穿 decoder 的 `hidden_states [B,S,D]`。如果 token、ID 和 hidden states 的关系开始混在一起，就回到 [Step 00 的完整推理地图](../step00/) 再看一次主线。

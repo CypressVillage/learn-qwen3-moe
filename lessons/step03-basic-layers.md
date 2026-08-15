@@ -258,4 +258,4 @@ prompt
   -> logits
 ```
 
-下一章会实现 RoPE。Attention 在比较 Query 和 Key 之前，必须知道每个 token 位于序列的什么位置。我们会从 position IDs 出发，构造旋转频率，并把位置信息写进 Q 和 K。忘记基础层为什么存在时，就回到 [Step 00 的完整推理地图](/step00/) 看它们怎样支撑整条 forward 链路。
+下一章会实现 RoPE。Attention 在比较 Query 和 Key 之前，必须知道每个 token 位于序列的什么位置。我们会从 position IDs 出发，构造旋转频率，并把位置信息写进 Q 和 K。忘记基础层为什么存在时，就回到 [Step 00 的完整推理地图](../step00/) 看它们怎样支撑整条 forward 链路。
