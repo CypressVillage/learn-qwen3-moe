@@ -34,7 +34,7 @@ tokenizer.json
 
 <!-- checkpoint: step02-assets -->
 
-右侧的 `from_file()` 先取出 BPE 模型的 `vocab` 和 `merges`，再找到正则预切分规则与 special tokens。
+左侧的 `from_file()` 先取出 BPE 模型的 `vocab` 和 `merges`，再找到正则预切分规则与 special tokens。
 
 词表的方向是：
 
@@ -69,7 +69,7 @@ merge 列表也不会当成普通集合。它在文件中的先后顺序就是�
 
 <!-- checkpoint: step02-byte-alphabet -->
 
-右侧 `_byte_alphabet()` 建立的就是这张双向表：
+左侧 `_byte_alphabet()` 建立的就是这张双向表：
 
 ```text
 byte_encoder:  0..255 -> 可见字符
@@ -112,7 +112,7 @@ h | e | l | l | o
 
 <!-- checkpoint: step02-bpe -->
 
-右侧 `_merge_token()` 正是在做这件事：
+左侧 `_merge_token()` 正是在做这件事：
 
 ```text
 字符序列

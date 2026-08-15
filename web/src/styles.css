@@ -84,6 +84,13 @@ button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible { outline: 2
 .checkpoint-anchor::before { content: attr(data-checkpoint); position: absolute; top: -10px; right: 0; padding-left: 10px; background: #0a0d0d; color: #596561; font: 700 8px ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; transition: color .18s ease; }
 .checkpoint-anchor.active { background: #61782e; }
 .checkpoint-anchor.active::before { color: var(--acid); }
+.lesson-navigation { max-width: 780px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 72px; padding-top: 24px; border-top: 1px solid var(--line); }
+.lesson-navigation-link { min-width: 0; display: flex; flex-direction: column; gap: 7px; padding: 18px; border: 1px solid var(--line); color: inherit; text-decoration: none; background: var(--panel); transition: border-color .15s ease, background-color .15s ease; }
+.lesson-navigation-link:hover { border-color: var(--acid); background: var(--panel-2); }
+.lesson-navigation-link.next { grid-column: 2; text-align: right; }
+.lesson-navigation-link span { color: var(--acid); font: 800 9px var(--code-font); letter-spacing: .1em; text-transform: uppercase; }
+.lesson-navigation-link strong { color: #e6ece9; font-size: 14px; line-height: 1.35; }
+.lesson-navigation-link small { color: var(--muted); font-size: 11px; line-height: 1.45; }
 
 .lab { height: calc(100vh - 64px); position: sticky; top: 64px; background: var(--panel); display: grid; grid-template-rows: auto 1fr auto; min-width: 0; }
 .lab-header { min-height: 86px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 14px; align-items: center; padding: 12px 18px; }
@@ -200,6 +207,7 @@ button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible { outline: 2
 :root[data-theme="light"] .checkpoint-anchor { background: #c8cec8; }
 :root[data-theme="light"] .checkpoint-anchor::before { background: #f4f3ed; color: #7a8580; }
 :root[data-theme="light"] .checkpoint-anchor.active { background: #7d9843; }
+:root[data-theme="light"] .lesson-navigation-link strong { color: #26322d; }
 :root[data-theme="light"] .lab-header small { color: #65716c; }
 :root[data-theme="light"] .checkpoint-stepper button { background: #dfe2dc; }
 :root[data-theme="light"] .checkpoint-stepper span { color: #59645f; }
@@ -269,6 +277,8 @@ button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible { outline: 2
   .lesson-content { font-size: 15px; }
   .lesson-content h1 { font-size: 31px; text-wrap: balance; }
   .lesson-content h2 { font-size: 24px; }
+  .lesson-navigation { grid-template-columns: 1fr; }
+  .lesson-navigation-link.next { grid-column: 1; }
   .lab-header { align-items: flex-start; flex-direction: column; }
   .lab-actions { width: 100%; flex-wrap: wrap; }
   .checkpoint-stepper { margin-right: auto; }

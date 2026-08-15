@@ -25,7 +25,7 @@
 - 当前源码：`config.py`、`checkpoint.py`、`tokenizer.py`、`layers.py` 已实现并按教学主线精简；基础层包含纯 NumPy 的 `Embedding`、`RMSNorm`、`Linear`，让 token IDs 进入真实 Embedding 权重并为后续 Attention、MoE 提供归一化与投影积木；其余推理模块为空文件骨架。
 - 当前正文：`lessons/step00-inference-map.md`、`lessons/step01-overview-config-weights.md`、`lessons/step02-tokenizer.md`、`lessons/step03-basic-layers.md`；Step 03 围绕“让 token IDs 第一次进入模型权重”展开，依次解释 Embedding 查表、RMSNorm 的最后一维计算和 Linear 投影。
 - 当前阅读资产：Step 00 有 13 个逐文件建立空骨架的 checkpoint，Step 01 有 6 个 insert-only checkpoint，Step 02 有 8 个 insert-only checkpoint，Step 03 有 6 个 insert-only checkpoint。
-- 当前网站：Vite/React 静态入口 `/`、`/step00/`、`/step01/`、`/step02/` 与 `/step03/`；顶部课程进度可展开并在现有 Step 文章间导航；左侧源码阅读器包含可折叠文件夹树、文件导航和 Python 语法高亮，右侧展示教程，并支持持久化的深浅色主题切换与可读性优化的代码字体；`master` 推送后由 GitHub Actions 构建并部署到 GitHub Pages。
+- 当前网站：Vite/React 静态入口 `/`、`/step00/`、`/step01/`、`/step02/` 与 `/step03/`；顶部课程进度可展开并在现有 Step 文章间导航，正文底部提供上一章、下一章入口；左侧源码阅读器包含可折叠文件夹树、文件导航和 Python 语法高亮，右侧展示教程，并支持持久化的深浅色主题切换与可读性优化的代码字体；`master` 推送后由 GitHub Actions 构建并部署到 GitHub Pages。
 - 下一步：实现 Step 04 RoPE，从 position IDs 构造旋转频率并把位置信息写入 Query 和 Key。
 
 ## 工作流程

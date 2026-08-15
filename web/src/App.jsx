@@ -302,12 +302,36 @@ function Lab({ checkpoint, previousCheckpoint, checkpointIndex, checkpoints, lab
   );
 }
 
+function LessonNavigation({ previousStep, nextStep }) {
+  return (
+    <nav className="lesson-navigation" aria-label="章节导航">
+      {previousStep && (
+        <a className="lesson-navigation-link previous" href={`${baseUrl}${previousStep.id}/`}>
+          <span>← 上一章</span>
+          <strong>Step {stepPresentation[previousStep.id].number} · {stepPresentation[previousStep.id].title}</strong>
+          <small>{stepPresentation[previousStep.id].summary}</small>
+        </a>
+      )}
+      {nextStep && (
+        <a className="lesson-navigation-link next" href={`${baseUrl}${nextStep.id}/`}>
+          <span>下一章 →</span>
+          <strong>Step {stepPresentation[nextStep.id].number} · {stepPresentation[nextStep.id].title}</strong>
+          <small>{stepPresentation[nextStep.id].summary}</small>
+        </a>
+      )}
+    </nav>
+  );
+}
+
 export function App() {
   const relativePath = window.location.pathname.startsWith(baseUrl)
     ? window.location.pathname.slice(baseUrl.length)
     : window.location.pathname.replace(/^\/+/, "");
   const requestedStep = relativePath.split("/").filter(Boolean)[0] ?? "step00";
   const step = content.steps.find((item) => item.id === requestedStep) ?? content.steps[0];
+  const stepIndex = content.steps.findIndex((item) => item.id === step.id);
+  const previousStep = content.steps[stepIndex - 1];
+  const nextStep = content.steps[stepIndex + 1];
   const presentation = stepPresentation[step.id];
   const checkpoints = step.checkpoints;
   const readingCheckpointIndex = useReadingCheckpoint(checkpoints);
@@ -447,6 +471,7 @@ export function App() {
         <article className="lesson-pane">
           <div className="lesson-kicker"><Pill tone="token">{presentation.kicker}</Pill><span>{presentation.duration}</span></div>
           <div className="lesson-content" dangerouslySetInnerHTML={{ __html: step.lesson.html }} />
+          <LessonNavigation previousStep={previousStep} nextStep={nextStep} />
         </article>
       </main>
       <nav className="mobile-dock" aria-label="移动端实验台入口">

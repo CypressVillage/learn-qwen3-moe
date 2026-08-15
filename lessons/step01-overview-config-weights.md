@@ -2,7 +2,7 @@
 
 <!-- checkpoint: step01-empty-workspace -->
 
-上一章看完了整张推理地图，右侧也留下了一排空文件。
+上一章看完了整张推理地图，左侧也留下了一排空文件。
 
 这一章先不急着算 Attention。模型要跑起来，至少得先回答两个更朴素的问题：这台 Qwen3 MoE 到底长什么样？几百亿参数又分别放在哪个文件里？
 
@@ -42,7 +42,7 @@ Router 给多少个专家打分         <- num_experts
 
 <!-- checkpoint: step01-config-contract -->
 
-右侧现在出现了配置字段。暂时不用逐个背，先抓住三组：模型有多宽、有多深；Attention 怎样分头；MoE 有多少专家、每个 token 选几个。
+左侧现在出现了配置字段。暂时不用逐个背，先抓住三组：模型有多宽、有多深；Attention 怎样分头；MoE 有多少专家、每个 token 选几个。
 
 `extra_fields` 也值得看一眼。真实 `config.json` 往往比这一课需要的字段更多。我们不因为暂时没用到某个字段就拒绝整份配置，而是把它留下来，等后面的章节需要时再接进正式结构。
 
@@ -61,7 +61,7 @@ Router 给多少个专家打分         <- num_experts
 
 <!-- checkpoint: step01-config-validation -->
 
-右侧多出来的 `__post_init__()` 只守住几条后续计算真正依赖的关系。
+左侧多出来的 `__post_init__()` 只守住几条后续计算真正依赖的关系。
 
 所有尺寸都必须是正整数；Query heads 必须能按组共享 KV heads；RoPE 要把 `head_dim` 分成两半，所以它必须是偶数；每个 token 选择的专家数也不能超过专家总数。
 
@@ -140,7 +140,7 @@ header 里每个 tensor 大概长这样：
 
 <!-- checkpoint: step01-header-validation -->
 
-右侧的 `_read_shard()` 先读 8 bytes，得到 header 长度，再把 JSON header 变成一组 `TensorInfo`。每个 `TensorInfo` 记住六件事：名字、dtype、shape、分片名、起止 offset，以及数据区从哪里开始。
+左侧的 `_read_shard()` 先读 8 bytes，得到 header 长度，再把 JSON header 变成一组 `TensorInfo`。每个 `TensorInfo` 记住六件事：名字、dtype、shape、分片名、起止 offset，以及数据区从哪里开始。
 
 这一步还没有加载权重本体。即使模型有几百亿参数，读取目录时也只需要读 index 和各分片前面很小的 header。我们现在拿到的是一张地图，不是把整座仓库搬进内存。
 

@@ -43,7 +43,7 @@ embedding_weight = checkpoint.load_tensor("model.embed_tokens.weight")
 
 <!-- checkpoint: step03-embedding-weight -->
 
-右侧的构造函数只保存 `weight`。这里没有复制整张表，因为真实 Embedding 已经很大；推理层只需要引用 checkpoint 读出的 array。
+左侧的构造函数只保存 `weight`。这里没有复制整张表，因为真实 Embedding 已经很大；推理层只需要引用 checkpoint 读出的 array。
 
 这也体现了模块边界：
 
@@ -84,7 +84,7 @@ hidden_states = weight[input_ids]
 
 <!-- checkpoint: step03-embedding-lookup -->
 
-右侧 `Embedding.__call__()` 在查表前守住两件事。
+左侧 `Embedding.__call__()` 在查表前守住两件事。
 
 第一，token IDs 必须是整数。浮点数 `12.0` 看起来能对应第 12 行，但把连续值偷偷当下标会掩盖上游错误，所以这里不自动转换。
 
@@ -142,7 +142,7 @@ batch 之间不会混在一起，不同 token 位置之间也不会互相求平�
 
 <!-- checkpoint: step03-rmsnorm -->
 
-右侧实现里，`axis=-1` 表示始终沿最后一维计算，`keepdims=True` 则把结果保留成 `[B,S,1]`。这样归一化系数可以通过广播乘回每个 hidden dimension。
+左侧实现里，`axis=-1` 表示始终沿最后一维计算，`keepdims=True` 则把结果保留成 `[B,S,1]`。这样归一化系数可以通过广播乘回每个 hidden dimension。
 
 中间计算先转成 `float32`。真实 checkpoint 常用 BF16 保存权重和激活，但平方、求均值和开平方对精度更敏感。课程里的 CPU 实现用 `float32` 完成这段计算，先保证数值过程清楚稳定。
 
@@ -189,7 +189,7 @@ output = input @ weight.T
 
 <!-- checkpoint: step03-linear -->
 
-右侧 `Linear` 同时接受可选 bias。Qwen3 的很多投影没有 bias，但把这条基础计算写完整并不会改变无 bias 路径：当 `bias is None` 时，直接返回矩阵乘法结果。
+左侧 `Linear` 同时接受可选 bias。Qwen3 的很多投影没有 bias，但把这条基础计算写完整并不会改变无 bias 路径：当 `bias is None` 时，直接返回矩阵乘法结果。
 
 现在可以用 Step 01 的真实权重做一次局部投影：
 
