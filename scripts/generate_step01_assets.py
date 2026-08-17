@@ -41,6 +41,15 @@ def _checkpoint_index_source() -> str:
     return "".join(lines[: load_start - 1])
 
 
+def _checkpoint_abstraction_source() -> str:
+    relative_path = "src/qwen3_moe/checkpoint.py"
+    lines = _source_text(relative_path).splitlines(keepends=True)
+    _, discovery_start = inspect.getsourcelines(
+        SafetensorsCheckpoint.from_directory
+    )
+    return "".join(lines[: discovery_start - 1])
+
+
 def _focus_range(
     content: str, marker: str, line_count: int, occurrence: int = 1
 ) -> dict[str, object]:
@@ -72,8 +81,12 @@ def generate() -> None:
     empty = {relative_path: "" for relative_path in source_files}
     config_contract = {**empty, config_path: _config_contract_source()}
     config_validation = {**config_contract, config_path: _source_text(config_path)}
-    index_discovery = {
+    checkpoint_abstraction = {
         **config_validation,
+        checkpoint_path: _checkpoint_abstraction_source(),
+    }
+    index_discovery = {
+        **checkpoint_abstraction,
         checkpoint_path: _checkpoint_index_source(),
     }
     header_validation = {
@@ -118,11 +131,23 @@ def generate() -> None:
             "diff": {"kind": "insert", "files": [config_path]},
         },
         {
+            "id": "step01-checkpoint-abstraction",
+            "label": "建立按名字访问权重的抽象",
+            "active_file": checkpoint_path,
+            "focus_range": _focus_range(
+                checkpoint_abstraction[checkpoint_path],
+                '"""Read named tensors from a Safetensors checkpoint.',
+                49,
+            ),
+            "contents": checkpoint_abstraction,
+            "diff": {"kind": "insert", "files": [checkpoint_path]},
+        },
+        {
             "id": "step01-index-discovery",
             "label": "用 index 找到参数所在分片",
             "active_file": checkpoint_path,
             "focus_range": _focus_range(
-                index_discovery[checkpoint_path], "def from_directory", 18
+                index_discovery[checkpoint_path], "@classmethod", 21
             ),
             "contents": index_discovery,
             "diff": {"kind": "insert", "files": [checkpoint_path]},
@@ -132,7 +157,7 @@ def generate() -> None:
             "label": "读取 Safetensors header",
             "active_file": checkpoint_path,
             "focus_range": _focus_range(
-                header_validation[checkpoint_path], "def _read_shard", 79
+                header_validation[checkpoint_path], "def _read_index", 56
             ),
             "contents": header_validation,
             "diff": {"kind": "insert", "files": [checkpoint_path]},

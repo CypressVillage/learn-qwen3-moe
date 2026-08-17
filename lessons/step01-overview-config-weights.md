@@ -52,9 +52,7 @@ Router 给多少个专家打分         <- num_experts
 
 字段摆好了，但一组数字能塞进数据类，不代表它们真的能组成一台 Qwen3 MoE。每次创建配置实例后，`__post_init__()` 都会立刻检查后续计算依赖的结构关系。
 
-左侧的 `__post_init__()` 只守住几条后续计算真正依赖的关系。
-
-所有尺寸都必须是正整数；Query heads 必须能按组共享 KV heads；RoPE 要把 `head_dim` 分成两半，所以它必须是偶数；每个 token 选择的专家数也不能超过专家总数。
+左侧的 `__post_init__()` 只守住几条后续计算真正依赖的关系：所有尺寸都必须是正整数；Query heads 必须能按组共享 KV heads；RoPE 要把 `head_dim` 分成两半，所以它必须是偶数；每个 token 选择的专家数也不能超过专家总数。
 
 这里没有把配置写成一份几十条规则的考试卷。校验最重要的任务，是让错误的结构尽早停下来，同时别让大量边界检查盖住主线。
 
@@ -83,6 +81,31 @@ print(config.num_experts_per_tok) # 每个 token 选几个专家
 
 到这里，我们知道该造一台什么样的模型了。但模型仍然是空的。真正的数值还躺在 Safetensors 分片里。
 
+## 为什么要有 SafetensorsCheckpoint
+
+`SafetensorsCheckpoint` 不是 Safetensors 格式自带的类，也不是从 Transformers 里复制来的。它是这个课程为了完整推理链路自己定义的一层权重访问接口。
+
+直接使用文件时，后面的模型代码会同时遇到几类细节：权重可能是单文件，也可能被拆成多个分片；参数名要先经过 index 才能找到分片；找到分片后还要解析 header、计算 byte offset、处理 dtype，最后才能得到 NumPy tensor。如果 Embedding、Attention 和 MoE 都自己处理这些步骤，文件格式细节就会散落到整个模型实现里。
+
+所以这里把问题收拢成一个很小的接口：
+
+```text
+SafetensorsCheckpoint
+  输入：模型目录
+  保存：参数名 -> TensorInfo 的索引
+  提供：tensor_info(name)、load_tensor(name)
+
+后续模型模块
+  只提交参数名 -> 得到 NumPy tensor
+  不关心单文件、分片、header 和 byte offset
+```
+
+它要解决的核心问题不是“怎样计算模型”，而是“怎样给模型提供一个稳定的按名字取权重入口”。这个边界也让权重目录的组织方式和后面的矩阵计算彼此独立。
+
+<!-- checkpoint: step01-checkpoint-abstraction -->
+
+左侧先建立这层抽象的基本状态。`TensorInfo` 描述一个 tensor 在磁盘上的位置和格式；`SafetensorsCheckpoint` 保存模型目录与整张参数索引。此时还没有读取任何权重 payload，`_DTYPE_WIDTHS` 和 `_NUMPY_DTYPES` 只是为后面的长度校验与 NumPy 解码准备格式信息。
+
 ## 一个参数到底在哪个分片
 
 Qwen3-30B-A3B 的权重没有塞进一个巨大的文件，而是拆成了 16 个分片。模型初始化时如果想拿：
@@ -107,7 +130,7 @@ model.layers.0.self_attn.q_proj.weight
 
 <!-- checkpoint: step01-index-discovery -->
 
-`SafetensorsCheckpoint.from_directory()` 先看目录里有没有 index。有，就按 `weight_map` 组织分片；没有，就接受一个单文件 checkpoint。这样后面的模型代码只按参数名取权重，不需要知道它来自一个文件还是 16 个文件。
+`SafetensorsCheckpoint.from_directory()` 先看目录里有没有 index。有，就按 `weight_map` 组织分片；没有，就接受一个单文件 checkpoint。这样后面的模型代码只按参数名取权重，不需要知道它来自一个文件还是 16 个文件。`keys()` 用来查看已有参数名，`tensor_info(name)` 则把未知名称统一变成清晰的错误。
 
 这里要分清两层信息：
 
@@ -144,7 +167,7 @@ header 里每个 tensor 大概长这样：
 
 <!-- checkpoint: step01-header-validation -->
 
-左侧的 `_read_shard()` 先读 8 bytes，得到 header 长度，再把 JSON header 变成一组 `TensorInfo`。每个 `TensorInfo` 记住六件事：名字、dtype、shape、分片名、起止 offset，以及数据区从哪里开始。
+左侧先从 `_read_index()` 开始：它收集 `weight_map` 涉及的所有分片，分别读取 header，再确认 index 指向的参数确实存在。随后 `_read_shard()` 读前 8 bytes 得到 header 长度，并把 JSON header 变成一组 `TensorInfo`。每个 `TensorInfo` 记住六件事：名字、dtype、shape、分片名、起止 offset，以及数据区从哪里开始。
 
 这一步还没有加载权重本体。即使模型有几百亿参数，读取目录时也只需要读 index 和各分片前面很小的 header。我们现在拿到的是一张地图，不是把整座仓库搬进内存。
 
