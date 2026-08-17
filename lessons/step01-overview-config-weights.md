@@ -83,11 +83,9 @@ print(config.num_experts_per_tok) # 每个 token 选几个专家
 
 ## 为什么要有 SafetensorsCheckpoint
 
-`SafetensorsCheckpoint` 不是 Safetensors 格式自带的类，也不是从 Transformers 里复制来的。它是这个课程为了完整推理链路自己定义的一层权重访问接口。
-
 直接使用文件时，后面的模型代码会同时遇到几类细节：权重可能是单文件，也可能被拆成多个分片；参数名要先经过 index 才能找到分片；找到分片后还要解析 header、计算 byte offset、处理 dtype，最后才能得到 NumPy tensor。如果 Embedding、Attention 和 MoE 都自己处理这些步骤，文件格式细节就会散落到整个模型实现里。
 
-所以这里把问题收拢成一个很小的接口：
+所以这里把问题收拢成一个很小的接口：我们定义一个 `SafetensorsCheckpoint` 类，它不是 Safetensors 格式自带的类，也不是从 Transformers 里复制来的。它是这个课程为了完整推理链路自己定义的一层权重访问接口。
 
 ```text
 SafetensorsCheckpoint
