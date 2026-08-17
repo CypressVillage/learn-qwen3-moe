@@ -6,7 +6,7 @@
 
 仓库只保留三类内容：
 
-1. `src/qwen3_moe/`：右侧源码阅读器展示的累计推理框架。
+1. `src/qwen3_moe/`：左侧源码阅读器展示的累计推理框架。
 2. `lessons/`：教程正文和对应的源码 checkpoint。
 3. `web/`、`scripts/`：将正文与 checkpoint 生成静态网站的代码。
 
