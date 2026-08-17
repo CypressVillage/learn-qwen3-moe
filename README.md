@@ -12,48 +12,7 @@
 
 ## 当前内容
 
-Step 00 先建立完整推理地图与空文件骨架，之后沿真实推理数据流逐章实现配置与权重读取、Tokenizer、基础层、RoPE、GQA Attention、Sparse MoE、Decoder Layer、完整 Causal LM、token selection、KV Cache、Cached Attention、完整模型 decode、自回归循环，最终在 Step 14 从模型目录与 prompt 生成文本：
-
-- `lessons/step00-inference-map.md`
-- `lessons/checkpoints/step00.json`
-- `src/qwen3_moe/config.py`
-- `src/qwen3_moe/checkpoint.py`
-- `lessons/step01-overview-config-weights.md`
-- `lessons/checkpoints/step01.json`
-- `src/qwen3_moe/tokenizer.py`
-- `lessons/step02-tokenizer.md`
-- `lessons/checkpoints/step02.json`
-- `src/qwen3_moe/layers.py`
-- `lessons/step03-basic-layers.md`
-- `lessons/checkpoints/step03.json`
-- `src/qwen3_moe/rope.py`
-- `lessons/step04-rope.md`
-- `lessons/checkpoints/step04.json`
-- `src/qwen3_moe/attention.py`
-- `lessons/step05-gqa-attention.md`
-- `lessons/checkpoints/step05.json`
-- `src/qwen3_moe/moe.py`
-- `lessons/step06-sparse-moe.md`
-- `lessons/checkpoints/step06.json`
-- `src/qwen3_moe/model.py`
-- `lessons/step07-decoder-layer.md`
-- `lessons/checkpoints/step07.json`
-- `lessons/step08-causal-lm-prefill.md`
-- `lessons/checkpoints/step08.json`
-- `src/qwen3_moe/generation.py`
-- `lessons/step09-next-token-selection.md`
-- `lessons/checkpoints/step09.json`
-- `src/qwen3_moe/cache.py`
-- `lessons/step10-kv-cache.md`
-- `lessons/checkpoints/step10.json`
-- `lessons/step11-cached-attention.md`
-- `lessons/checkpoints/step11.json`
-- `lessons/step12-cached-decode.md`
-- `lessons/checkpoints/step12.json`
-- `lessons/step13-autoregressive-generation.md`
-- `lessons/checkpoints/step13.json`
-- `lessons/step14-end-to-end-inference.md`
-- `lessons/checkpoints/step14.json`
+Step 00 先建立完整推理地图与空文件骨架，之后沿真实推理数据流逐章实现配置与权重读取、Tokenizer、基础层、RoPE、GQA Attention、Sparse MoE、Decoder Layer、完整 Causal LM、token selection、KV Cache、Cached Attention、完整模型 decode、自回归循环，最终在 Step 14 从模型目录与 prompt 生成文本。
 
 主线课程已经闭合完整推理链路：
 
@@ -64,33 +23,20 @@ Step 00 先建立完整推理地图与空文件骨架，之后沿真实推理数
 
 ## 生成网站
 
-```bash
-uv sync --locked --python 3.11.15
-uv run python scripts/generate_step00_assets.py
-uv run python scripts/generate_step01_assets.py
-uv run python scripts/generate_step02_assets.py
-uv run python scripts/generate_step03_assets.py
-uv run python scripts/generate_step04_assets.py
-uv run python scripts/generate_step05_assets.py
-uv run python scripts/generate_step06_assets.py
-uv run python scripts/generate_step07_assets.py
-uv run python scripts/generate_step08_assets.py
-uv run python scripts/generate_step09_assets.py
-uv run python scripts/generate_step10_assets.py
-uv run python scripts/generate_step11_assets.py
-uv run python scripts/generate_step12_assets.py
-uv run python scripts/generate_step13_assets.py
-uv run python scripts/generate_step14_assets.py
-uv run python scripts/validate_course_assets.py
+安装 [uv](https://docs.astral.sh/uv/) 和 Node.js 后，在仓库根目录运行：
 
-cd web
-npm install
-npm run build
+```bash
+uv run --locked python scripts/build_site.py
 ```
+
+该命令会生成并校验全部课程资产、安装前端依赖，然后将网站构建到 `web/dist/`。
 
 开发预览：
 
 ```bash
 cd web
+npm install
 npm run dev
 ```
+
+开发服务器通常运行在 <http://localhost:5173/>；如果该端口已被占用，请以终端输出的地址为准。

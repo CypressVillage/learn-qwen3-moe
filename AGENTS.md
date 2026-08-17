@@ -43,7 +43,7 @@
 - 当前源码：`generate_text()` 从模型目录加载 config、Safetensors、Tokenizer 与完整模型，编码单条 prompt，调用 cached 自回归循环，再将完整 token 序列解码回文本。
 - 当前正文：已完成 `lessons/step00-inference-map.md` 至 `lessons/step14-end-to-end-inference.md`；Step 00 开头已补充教程目标、学习路径与实现边界，Step 14 汇总模型资产、文本入口、生成参数、解码出口与完整推理地图。
 - 当前阅读资产：Step 14 有 4 个 insert-only checkpoint，最终快照等于当前源码；历史 checkpoint 保持逐行可累积。
-- 当前网站：Vite/React 静态入口 `/` 与 `/step00/` 至 `/step14/`；课程导航与源码阅读器已接入全部主线章节，顶部章节目录支持视口内滚动。
+- 当前网站：Vite/React 静态入口 `/` 与 `/step00/` 至 `/step14/`；课程导航与源码阅读器已接入全部主线章节，顶部章节目录支持视口内滚动；`scripts/build_site.py` 提供课程资产生成、校验和前端构建的一条命令入口。
 - 当前规划：主线固定为 Step 00 至 Step 14；推理优化内容独立放入后日谈，不计入主线进度。
 - 下一步：主线完成；推理优化内容只在后日谈中继续，不计入 Step 00 至 Step 14。
 
