@@ -43,7 +43,7 @@
 - 当前源码：`generate_text()` 从模型目录加载 config、Safetensors、Tokenizer 与完整模型，编码单条 prompt，调用 cached 自回归循环，再将完整 token 序列解码回文本。
 - 当前正文：已完成 `lessons/step00-inference-map.md` 至 `lessons/step14-end-to-end-inference.md`；Step 00 开头已补充教程目标、学习路径与实现边界，Step 14 汇总模型资产、文本入口、生成参数、解码出口与完整推理地图。
 - 当前阅读资产：Step 14 有 4 个 insert-only checkpoint，最终快照等于当前源码；历史 checkpoint 保持逐行可累积。
-- 当前网站：Vite/React 静态入口 `/` 与 `/step00/` 至 `/step14/`；课程导航与源码阅读器已接入全部主线章节，顶部章节目录支持视口内滚动；`scripts/build_site.py` 提供课程资产生成、校验和前端构建的一条命令入口。
+- 当前网站：Vite/React 静态入口 `/` 与 `/step00/` 至 `/step14/`；课程导航与源码阅读器已接入全部主线章节，顶部章节目录支持视口内滚动；源码高亮覆盖完整横向滚动宽度，EXPLORER 支持折叠扩宽代码区；`scripts/build_site.py` 提供课程资产生成、校验和前端构建的一条命令入口。
 - Step 01 阅读资产：`step01-config-contract` 的高亮范围从 `config.py` 文件首行开始，包含模块说明、imports、`@dataclass` 与完整配置字段；配置正文按源码顺序先讲 `__post_init__()`，再讲 `from_json()`；权重部分先解释课程自定义的 `SafetensorsCheckpoint` 抽象，再依次高亮基础状态、index 发现、header 解析和 tensor payload 读取，避免代码未讲解先出现。
 - 当前规划：主线固定为 Step 00 至 Step 14；推理优化内容独立放入后日谈，不计入主线进度。
 - 下一步：主线完成；推理优化内容只在后日谈中继续，不计入 Step 00 至 Step 14。

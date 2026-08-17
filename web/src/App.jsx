@@ -289,6 +289,7 @@ function highlightedPythonLines(source) {
 
 function RepositoryView({ checkpoint, previousCheckpoint, checkpointIndex, checkpointCount }) {
   const [filePath, setFilePath] = useState(checkpoint.active_file);
+  const [explorerCollapsed, setExplorerCollapsed] = useState(false);
   const codePanelRef = useRef(null);
 
   useEffect(() => {
@@ -326,9 +327,22 @@ function RepositoryView({ checkpoint, previousCheckpoint, checkpointIndex, check
   const addedLines = new Set(addedLineIndexes(previousFile?.content ?? "", file?.content ?? ""));
 
   return (
-    <div className="repo-view">
+    <div className={`repo-view ${explorerCollapsed ? "explorer-collapsed" : ""}`}>
       <nav className="file-tree" aria-label="累计 checkpoint 文件树">
-        <div className="file-tree-header"><span>EXPLORER</span><small>{files.length} FILES</small></div>
+        <div className="file-tree-header">
+          <span className="explorer-label">EXPLORER</span>
+          <small>{files.length} FILES</small>
+          <button
+            className="explorer-toggle"
+            type="button"
+            onClick={() => setExplorerCollapsed((collapsed) => !collapsed)}
+            aria-expanded={!explorerCollapsed}
+            aria-label={explorerCollapsed ? "展开 EXPLORER" : "折叠 EXPLORER"}
+            title={explorerCollapsed ? "展开 EXPLORER" : "折叠 EXPLORER"}
+          >
+            <span aria-hidden="true">{explorerCollapsed ? "›" : "‹"}</span>
+          </button>
+        </div>
         <div className="file-tree-body">
           {files.length === 0
             ? <span className="empty-tree">EMPTY REPOSITORY</span>
