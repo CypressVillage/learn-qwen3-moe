@@ -100,14 +100,16 @@ def generate() -> None:
             "label": "声明 Qwen3 MoE 配置字段",
             "active_file": config_path,
             "focus_range": _focus_range(
-                config_contract[config_path], "class Qwen3MoeConfig", 24
+                config_contract[config_path],
+                '"""Qwen3 MoE architecture configuration.',
+                32,
             ),
             "contents": config_contract,
             "diff": {"kind": "insert", "files": [config_path]},
         },
         {
             "id": "step01-config-validation",
-            "label": "读取 config.json 并守住结构关系",
+            "label": "守住结构关系并读取 config.json",
             "active_file": config_path,
             "focus_range": _focus_range(
                 config_validation[config_path], "def __post_init__", 53

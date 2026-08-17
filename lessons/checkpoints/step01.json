@@ -39,9 +39,9 @@
         "kind": "insert"
       },
       "focus_range": {
-        "end": 33,
-        "start": 10,
-        "symbol": "class Qwen3MoeConfig"
+        "end": 32,
+        "start": 1,
+        "symbol": "\"\"\"Qwen3 MoE architecture configuration."
       },
       "id": "step01-config-contract",
       "label": "声明 Qwen3 MoE 配置字段",
@@ -73,7 +73,7 @@
         "symbol": "def __post_init__"
       },
       "id": "step01-config-validation",
-      "label": "读取 config.json 并守住结构关系",
+      "label": "守住结构关系并读取 config.json",
       "repository_snapshot": {
         "files": [
           {
