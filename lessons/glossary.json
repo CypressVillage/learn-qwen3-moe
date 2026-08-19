@@ -1,0 +1,82 @@
+{
+  "Attention": {
+    "full_name": "Attention",
+    "summary": "让每个 token 根据 Query 与 Key 的匹配程度，从上下文对应的 Value 中读取并汇总信息。"
+  },
+  "BPE": {
+    "full_name": "Byte Pair Encoding",
+    "summary": "一种子词切分方法：反复合并高频符号对，把文本转换成词表中已有的 token。"
+  },
+  "causal mask": {
+    "full_name": "Causal Attention Mask",
+    "summary": "遮住当前位置之后的 Attention 分数，保证生成时只能读取自己和已经出现的前文。"
+  },
+  "checkpoint": {
+    "full_name": "Model Checkpoint",
+    "summary": "保存模型参数及相关元数据的文件集合；本教程也用 checkpoint 表示随正文累计展开的源码快照。"
+  },
+  "decode": {
+    "full_name": "Incremental Decode",
+    "summary": "prefill 之后逐 token 生成的阶段，每次只处理最新 token，并复用已经保存的 KV Cache。"
+  },
+  "Embedding": {
+    "full_name": "Token Embedding",
+    "summary": "根据 token ID 查询权重表，把离散整数转换成模型能够继续计算的连续向量。"
+  },
+  "GQA": {
+    "full_name": "Grouped-Query Attention",
+    "summary": "让多组 Query heads 共享较少的 Key/Value heads，从而减少参数量和 KV Cache 占用。"
+  },
+  "KV Cache": {
+    "full_name": "Key-Value Cache",
+    "summary": "保存历史 token 在各层 Attention 中产生的 Key 和 Value，避免生成时反复计算整段前文。"
+  },
+  "logits": {
+    "full_name": "Logits",
+    "summary": "模型对各候选 token 给出的未归一化原始分数；经过 softmax 后才能得到概率分布。"
+  },
+  "MoE": {
+    "full_name": "Mixture of Experts",
+    "summary": "由多个 Expert 和一个 Router 组成的结构，每个 token 只激活其中少量专家完成前馈计算。"
+  },
+  "prefill": {
+    "full_name": "Prompt Prefill",
+    "summary": "生成开始前一次处理完整 prompt 的阶段，同时得到首个 next-token 预测并建立 KV Cache。"
+  },
+  "residual": {
+    "full_name": "Residual Connection",
+    "summary": "把模块输出加回原输入，让信息和梯度能够跨层直接传递；推理时表现为逐层累加状态。"
+  },
+  "RMSNorm": {
+    "full_name": "Root Mean Square Normalization",
+    "summary": "按最后一维的均方根缩放向量，再乘学习到的权重，用于稳定各层数值尺度。"
+  },
+  "RoPE": {
+    "full_name": "Rotary Position Embedding",
+    "summary": "根据 token 位置旋转 Query 和 Key，使 Attention 点积自然携带相对位置信息。"
+  },
+  "Router": {
+    "full_name": "MoE Router",
+    "summary": "为每个 token 的所有专家计算路由分数，并选出本次真正需要执行的 top-k Experts。"
+  },
+  "Safetensors": {
+    "full_name": "Safetensors",
+    "summary": "一种只保存张量数据和元信息的安全权重格式，支持按 byte range 读取所需参数。"
+  },
+  "softmax": {
+    "full_name": "Softmax",
+    "summary": "把一组任意实数转换成总和为 1 的非负概率，突出较大的分数并保留相对差异。"
+  },
+  "temperature": {
+    "full_name": "Sampling Temperature",
+    "summary": "采样前缩放 logits 的参数；越低越偏向高分 token，越高则让概率分布更平坦。"
+  },
+  "Tokenizer": {
+    "full_name": "Tokenizer",
+    "summary": "按照模型配套的词表与切分规则，在文本和 token IDs 之间进行可逆转换。"
+  },
+  "top-k": {
+    "full_name": "Top-k Selection",
+    "summary": "只保留分数最高的 k 个候选项；在 MoE 中用于选专家，在采样中也可用于限制候选 token。"
+  }
+}

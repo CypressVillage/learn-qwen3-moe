@@ -162,7 +162,7 @@ projected Q/K
 
 ## GQA 怎样让 32 个 Query heads 共享 4 组 K/V
 
-普通 Multi-Head Attention 通常让 Q、K、V 拥有相同 head 数。Qwen3 使用 Grouped-Query Attention：
+普通 Multi-Head Attention 通常让 Q、K、V 拥有相同 head 数。Qwen3 使用 [[GQA]]，也就是 Grouped-Query Attention：
 
 ```text
 32 Query heads / 4 KV heads = 每组 8 个 Query heads
@@ -235,7 +235,7 @@ future score = -inf
 softmax(-inf) = 0
 ```
 
-当前位置可以读取自己，所以主对角线不会被遮住。causal mask 约束的是信息方向，不是在删除 token。
+当前位置可以读取自己，所以主对角线不会被遮住。[[causal mask]] 约束的是信息方向，不是在删除 token。
 
 ## softmax 把分数变成读取比例
 

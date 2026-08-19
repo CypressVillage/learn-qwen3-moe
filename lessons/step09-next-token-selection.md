@@ -126,7 +126,7 @@ greedy 有三个直接特点：
 
 <!-- checkpoint: step09-temperature -->
 
-如果希望模型在多个合理候选之间做随机选择，需要先把 logits 变成概率。带 temperature 的 softmax 是：
+如果希望模型在多个合理候选之间做随机选择，需要先把 logits 变成概率。带 [[temperature]] 的 softmax 是：
 
 ```text
 p_i = exp(logit_i / T) / sum_j exp(logit_j / T)

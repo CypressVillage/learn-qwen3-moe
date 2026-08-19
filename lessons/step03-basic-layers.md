@@ -12,7 +12,7 @@ prompt 文本
   -> hidden_states [B,S,D]
 ```
 
-这一章会实现 `Embedding`、`RMSNorm` 和 `Linear`。它们都放在 `layers.py`，因为后面的 Attention、MoE 和完整模型会反复使用这些小积木。
+这一章会实现 [[Embedding]]、[[RMSNorm]] 和 `Linear`。它们都放在 `layers.py`，因为后面的 Attention、MoE 和完整模型会反复使用这些小积木。
 
 先划清边界：本章只准备基础计算，不提前实现 Attention，也不创建完整 decoder layer。我们先看清 token ID 怎样变成向量，以及一个 `[B,S,D]` tensor 怎样在不打乱前两维的情况下被归一化和投影。
 

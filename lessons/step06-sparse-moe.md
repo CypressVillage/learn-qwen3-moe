@@ -86,7 +86,7 @@ Router 本质上是一个没有 bias 的 Linear：
 token [D] @ router_weight.T [D,E] -> logits [E]
 ```
 
-但我们没有直接把它包装成 `Linear`，因为 Router 的 forward 不会停在投影结果；它紧接着还要执行 softmax、top-k 和可选的重新归一化。把这些动作放在一个小类里，更容易看清“分数怎样变成执行路径”。
+但我们没有直接把它包装成 `Linear`，因为 [[Router]] 的 forward 不会停在投影结果；它紧接着还要执行 [[softmax]]、[[top-k]] 和可选的重新归一化。把这些动作放在一个小类里，更容易看清“分数怎样变成执行路径”。
 
 与 Attention 一样，`moe.py` 不负责从 Safetensors 分片里查参数。仍然由外部加载 tensor，再交给对应模块：
 

@@ -4,7 +4,7 @@
 
 如果只调用一个现成的推理库，让 Qwen3 回答问题并不难。真正困难的是打开这只黑盒以后，仍然能说清一段文字为什么会变成 token IDs，这些数字怎样穿过几十层 Attention 和 MoE，又怎样一步一步长成新的文字。
 
-这门教程要做的，就是把这只黑盒拆开，再亲手装回去。我们会从一个几乎为空的 Python 包开始，沿着真实的推理数据流，依次写出配置与权重读取、Qwen3 Tokenizer、Embedding、RMSNorm、RoPE、GQA Attention、Sparse MoE、Decoder Layer、采样、KV Cache 和自回归生成循环。到最后，你写下的代码将能够加载 Hugging Face 模型目录中的真实资产，接收一段 prompt，并完成从文本输入到文本输出的整条 Qwen3 MoE 推理链路。
+这门教程要做的，就是把这只黑盒拆开，再亲手装回去。我们会从一个几乎为空的 Python 包开始，沿着真实的推理数据流，依次写出配置与权重读取、Qwen3 Tokenizer、Embedding、RMSNorm、RoPE、GQA Attention、Sparse [[MoE]]、Decoder Layer、采样、[[KV Cache]] 和自回归生成循环。到最后，你写下的代码将能够加载 Hugging Face 模型目录中的真实资产，接收一段 prompt，并完成从文本输入到文本输出的整条 Qwen3 MoE 推理链路。
 
 这里的目标不是造一个功能齐全的训练框架，也不是用复杂优化追求生产环境里的最高吞吐。我们只专注推理，优先使用清楚、直接、适合在 CPU 和小张量上观察的实现。这样每一个 shape 的变化、每一次 residual add、每一次专家选择，以及 KV Cache 为什么有效，都能在代码里找到对应的位置。
 

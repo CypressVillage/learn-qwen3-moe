@@ -150,7 +150,7 @@ x1 = x0 + Attention(RMSNorm(x0))
 
 两条分支的 shape 都是 `[B,S,D]`。Attention 内部虽然经历了 heads 拆分、causal scores 和 Value 聚合，但输出投影已经把结果恢复到 hidden size，因此可以逐元素相加。
 
-residual add 不是拼接，也不会把 hidden size 从 2048 变成 4096。它把 Attention 产生的“上下文更新量”加回原表示，让主干既保留进入本层的信息，也吸收当前层读取到的新上下文。
+[[residual]] add 不是拼接，也不会把 hidden size 从 2048 变成 4096。它把 Attention 产生的“上下文更新量”加回原表示，让主干既保留进入本层的信息，也吸收当前层读取到的新上下文。
 
 `position_ids` 只传给 Attention，因为 RoPE 需要知道每个 token 的位置。MoE 对每个 token 独立变换 hidden dimensions，不做跨位置读取，因此不需要 position IDs。
 

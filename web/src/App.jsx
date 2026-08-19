@@ -175,6 +175,133 @@ function Pill({ children, tone = "neutral" }) {
   return <span className={`pill pill-${tone}`}>{children}</span>;
 }
 
+function LessonContent({ html, glossary }) {
+  const contentRef = useRef(null);
+  const cardRef = useRef(null);
+  const closeTimerRef = useRef(0);
+  const pointerTypeRef = useRef("mouse");
+  const [activeTerm, setActiveTerm] = useState(null);
+
+  function clearCloseTimer() {
+    window.clearTimeout(closeTimerRef.current);
+  }
+
+  function closeCard() {
+    clearCloseTimer();
+    setActiveTerm(null);
+  }
+
+  function scheduleClose() {
+    clearCloseTimer();
+    closeTimerRef.current = window.setTimeout(() => setActiveTerm(null), 100);
+  }
+
+  function termFromEvent(event) {
+    const term = event.target.closest?.(".glossary-term");
+    return term && contentRef.current?.contains(term) ? term : null;
+  }
+
+  function showTerm(term) {
+    const key = term?.dataset.glossaryKey;
+    if (!key || !glossary[key]) return;
+    clearCloseTimer();
+    setActiveTerm({ key, rect: term.getBoundingClientRect() });
+  }
+
+  useEffect(() => {
+    closeCard();
+  }, [html]);
+
+  useEffect(() => () => clearCloseTimer(), []);
+
+  useEffect(() => {
+    if (!activeTerm) return undefined;
+
+    const closeFromOutside = (event) => {
+      if (
+        event.target.closest?.(".glossary-term")
+        || cardRef.current?.contains(event.target)
+      ) return;
+      closeCard();
+    };
+    const closeFromKeyboard = (event) => {
+      if (event.key === "Escape") closeCard();
+    };
+    const closeFromViewportChange = () => closeCard();
+
+    document.addEventListener("pointerdown", closeFromOutside);
+    document.addEventListener("keydown", closeFromKeyboard);
+    window.addEventListener("resize", closeFromViewportChange);
+    window.addEventListener("scroll", closeFromViewportChange, { passive: true });
+    return () => {
+      document.removeEventListener("pointerdown", closeFromOutside);
+      document.removeEventListener("keydown", closeFromKeyboard);
+      window.removeEventListener("resize", closeFromViewportChange);
+      window.removeEventListener("scroll", closeFromViewportChange);
+    };
+  }, [activeTerm]);
+
+  const definition = activeTerm ? glossary[activeTerm.key] : null;
+  const cardWidth = Math.min(320, window.innerWidth - 24);
+  const left = activeTerm
+    ? Math.max(12, Math.min(window.innerWidth - cardWidth - 12, activeTerm.rect.left + activeTerm.rect.width / 2 - cardWidth / 2))
+    : 0;
+  const placement = activeTerm?.rect.top > 180 ? "above" : "below";
+  const top = activeTerm
+    ? placement === "above" ? activeTerm.rect.top - 12 : activeTerm.rect.bottom + 12
+    : 0;
+
+  return (
+    <>
+      <div
+        className="lesson-content"
+        ref={contentRef}
+        onPointerDown={(event) => {
+          pointerTypeRef.current = event.pointerType;
+        }}
+        onPointerOver={(event) => {
+          if (event.pointerType !== "touch") showTerm(termFromEvent(event));
+        }}
+        onPointerOut={(event) => {
+          const term = termFromEvent(event);
+          if (!term || cardRef.current?.contains(event.relatedTarget)) return;
+          scheduleClose();
+        }}
+        onFocus={(event) => showTerm(termFromEvent(event))}
+        onBlur={(event) => {
+          if (!cardRef.current?.contains(event.relatedTarget)) scheduleClose();
+        }}
+        onClick={(event) => {
+          const term = termFromEvent(event);
+          if (!term) return;
+          if (pointerTypeRef.current === "touch" && activeTerm?.key === term.dataset.glossaryKey) {
+            closeCard();
+          } else {
+            showTerm(term);
+          }
+        }}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+      {definition && (
+        <aside
+          className={`glossary-card ${placement}`}
+          id="glossary-card"
+          role="tooltip"
+          ref={cardRef}
+          style={{ left, top, width: cardWidth }}
+          onPointerEnter={clearCloseTimer}
+          onPointerLeave={scheduleClose}
+        >
+          <span className="glossary-card-label">CONCEPT</span>
+          <strong>{activeTerm.key}</strong>
+          {definition.full_name !== activeTerm.key && <small>{definition.full_name}</small>}
+          <p>{definition.summary}</p>
+        </aside>
+      )}
+    </>
+  );
+}
+
 function useReadingCheckpoint(checkpoints) {
   const [checkpointIndex, setCheckpointIndex] = useState(0);
 
@@ -594,7 +721,7 @@ export function App() {
         <Lab {...labProps} />
         <article className="lesson-pane">
           <div className="lesson-kicker"><Pill tone="token">{presentation.kicker}</Pill><span>{presentation.duration}</span></div>
-          <div className="lesson-content" dangerouslySetInnerHTML={{ __html: step.lesson.html }} />
+          <LessonContent html={step.lesson.html} glossary={content.glossary} />
           <LessonNavigation previousStep={previousStep} nextStep={nextStep} />
         </article>
       </main>

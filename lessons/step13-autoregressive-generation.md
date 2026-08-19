@@ -62,7 +62,7 @@ temperature is None   -> greedy_next_token(logits)
 temperature is float  -> sample_next_token(logits, temperature, rng)
 ```
 
-`None` 明确表示确定性 greedy，正浮点数表示 temperature sampling。它复用 Step 09 已经实现并验证过的函数，没有在循环内部复制 softmax 或采样逻辑。
+`None` 明确表示确定性 greedy，正浮点数表示 [[temperature]] sampling。它复用 Step 09 已经实现并验证过的函数，没有在循环内部复制 softmax 或采样逻辑。
 
 两个选择函数都返回 `[1]`：
 

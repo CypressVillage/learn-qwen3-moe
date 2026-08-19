@@ -7,6 +7,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
 CHECKPOINT_REF = re.compile(r"<!-- checkpoint: ([a-z0-9-]+) -->")
+FENCED_CODE = re.compile(r"^(```|~~~).*?^\1[ \t]*$", re.MULTILINE | re.DOTALL)
+INLINE_CODE = re.compile(r"`+[^`\n]*`+")
+GLOSSARY_REF = re.compile(r"\[\[([^\]\n]+)\]\]")
 
 
 def _is_line_subsequence(earlier: str, later: str) -> bool:
@@ -16,6 +19,29 @@ def _is_line_subsequence(earlier: str, later: str) -> bool:
         if line == expected:
             expected = next(earlier_lines, None)
     return expected is None
+
+
+def _validate_glossary(lesson_paths: list[Path]) -> int:
+    glossary = json.loads((ROOT / "lessons" / "glossary.json").read_text(encoding="utf-8"))
+    assert isinstance(glossary, dict) and glossary, "glossary must be a non-empty object"
+    for key, definition in glossary.items():
+        assert isinstance(key, str) and key == key.strip() and key, f"invalid glossary key: {key!r}"
+        assert isinstance(definition, dict), f"invalid glossary definition: {key}"
+        assert set(definition) == {"full_name", "summary"}, f"invalid glossary fields: {key}"
+        assert all(isinstance(value, str) and value.strip() for value in definition.values()), (
+            f"empty glossary definition: {key}"
+        )
+
+    references = 0
+    for lesson_path in lesson_paths:
+        lesson = lesson_path.read_text(encoding="utf-8")
+        prose = INLINE_CODE.sub("", FENCED_CODE.sub("", lesson))
+        for key in GLOSSARY_REF.findall(prose):
+            assert key == key.strip(), f"glossary reference has surrounding whitespace: {key!r}"
+            assert key in glossary, f"unknown glossary term in {lesson_path.name}: {key}"
+            references += 1
+    assert references, "no glossary references found"
+    return references
 
 
 def _validate_step(checkpoint_path: Path, require_current_source: bool) -> int:
@@ -90,7 +116,12 @@ def main() -> None:
         _validate_step(path, require_current_source=path == checkpoint_paths[-1])
         for path in checkpoint_paths
     )
-    print(f"validated {total} checkpoints across {len(checkpoint_paths)} lessons")
+    lesson_paths = sorted((ROOT / "lessons").glob("step*.md"))
+    glossary_references = _validate_glossary(lesson_paths)
+    print(
+        f"validated {total} checkpoints across {len(checkpoint_paths)} lessons "
+        f"and {glossary_references} glossary references"
+    )
 
 
 if __name__ == "__main__":

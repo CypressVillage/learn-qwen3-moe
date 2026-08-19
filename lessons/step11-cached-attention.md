@@ -2,7 +2,7 @@
 
 <!-- checkpoint: step11-ready -->
 
-Step 10 已经准备好按层保存 `[B,Hkv,S,Dh]` Key/Value 的 `KVCache`，但现有 `Qwen3Attention` 还完全不知道它的存在。本章把两者接起来，让 Attention 同时支持两种执行方式：
+Step 10 已经准备好按层保存 `[B,Hkv,S,Dh]` Key/Value 的 `KVCache`，但现有 `Qwen3Attention` 还完全不知道它的存在。本章把两者接起来，让 [[Attention]] 同时支持两种执行方式：
 
 ```text
 prefill：一次输入整段 prompt，建立初始缓存

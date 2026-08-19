@@ -74,6 +74,17 @@ button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible { outline: 2
 .lesson-content h3 { color: #e6ece9; margin-top: 42px; }
 .lesson-content p, .lesson-content ul, .lesson-content ol { max-width: 780px; }
 .lesson-content a { color: var(--cyan); }
+.glossary-term { display: inline; margin: 0; padding: 0 1px; border: 0; border-bottom: 1px dotted color-mix(in srgb, var(--cyan) 72%, transparent); background: transparent; color: var(--cyan); cursor: help; font: inherit; line-height: inherit; text-align: inherit; }
+.glossary-term:hover, .glossary-term:focus-visible { color: var(--acid); border-bottom-color: var(--acid); background: color-mix(in srgb, var(--acid) 9%, transparent); outline: 0; }
+.glossary-card { position: fixed; z-index: 60; display: grid; gap: 5px; padding: 15px 17px 16px; border: 1px solid #52612f; border-top: 2px solid var(--acid); background: #151b19; box-shadow: 0 16px 44px #000b; color: #dbe5e1; line-height: 1.5; }
+.glossary-card::after { content: ""; width: 9px; height: 9px; position: absolute; left: 50%; background: #151b19; border-color: #52612f; transform: translateX(-50%) rotate(45deg); }
+.glossary-card.above { transform: translateY(-100%); }
+.glossary-card.above::after { bottom: -6px; border-right: 1px solid; border-bottom: 1px solid; }
+.glossary-card.below::after { top: -6px; border-left: 1px solid; border-top: 1px solid; }
+.glossary-card-label { color: var(--acid); font: 800 8px var(--code-font); letter-spacing: .14em; }
+.glossary-card strong { color: #f0f5f2; font-size: 16px; line-height: 1.25; }
+.glossary-card small { color: var(--cyan); font: 600 10px/1.4 var(--code-font); }
+.glossary-card p { margin: 4px 0 0; color: #b9c5c0; font-size: 13px; line-height: 1.65; }
 .lesson-content code { font-family: var(--code-font); font-size: .9em; font-variant-ligatures: none; color: #d9f28d; background: #151b19; padding: 2px 5px; }
 .lesson-content pre { max-width: 100%; overflow: auto; background: #0d1111; border: 1px solid var(--line); border-left: 3px solid #4d5a57; padding: 18px; line-height: 1.55; }
 .lesson-content pre code { background: none; padding: 0; color: #b8c7c2; }
@@ -208,6 +219,10 @@ button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible { outline: 2
 :root[data-theme="light"] .lesson-content h1,
 :root[data-theme="light"] .lesson-content h2 { color: #17211d; }
 :root[data-theme="light"] .lesson-content h3 { color: #26322d; }
+:root[data-theme="light"] .glossary-card { border-color: #8ea064; border-top-color: var(--acid); background: #f8f8f3; box-shadow: 0 16px 44px #4b554433; color: #26322d; }
+:root[data-theme="light"] .glossary-card::after { background: #f8f8f3; border-color: #8ea064; }
+:root[data-theme="light"] .glossary-card strong { color: #17211d; }
+:root[data-theme="light"] .glossary-card p { color: #46524d; }
 :root[data-theme="light"] .lesson-content code { color: #476500; background: #e5e9df; }
 :root[data-theme="light"] .lesson-content pre { border-left-color: #8c9791; }
 :root[data-theme="light"] .lesson-content pre code { color: #36423d; }
@@ -285,6 +300,8 @@ button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible { outline: 2
   .lesson-content { font-size: 15px; }
   .lesson-content h1 { font-size: 31px; text-wrap: balance; }
   .lesson-content h2 { font-size: 24px; }
+  .glossary-card { width: auto !important; left: 12px !important; right: 12px; top: auto !important; bottom: 76px; transform: none !important; }
+  .glossary-card::after { display: none; }
   .lesson-navigation { grid-template-columns: 1fr; }
   .lesson-navigation-link.next { grid-column: 1; }
   .lab-header { align-items: flex-start; flex-direction: column; }

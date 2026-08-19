@@ -16,7 +16,7 @@ token IDs [B,S]
   -> logits
 ```
 
-这一章实现 `Qwen3MoeForCausalLM` 的无 KV Cache prefill。它接收整段 prompt 的 token IDs，一次计算 prompt 中所有位置，最终为每个位置返回一组覆盖完整 vocabulary 的 logits。
+这一章实现 `Qwen3MoeForCausalLM` 的无 KV Cache [[prefill]]。它接收整段 prompt 的 token IDs，一次计算 prompt 中所有位置，最终为每个位置返回一组覆盖完整 vocabulary 的 [[logits]]。
 
 先划清本章边界。我们会得到 `[B,S,V]`，但暂时不从中选 token。`argmax`、temperature、top-k 与随机采样都属于下一章。当前目标只有一个：把 token IDs 完整推过 Qwen3 MoE Transformer，得到模型对“每个位置之后应该出现什么”的原始分数。
 

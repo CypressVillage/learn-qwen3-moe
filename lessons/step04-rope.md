@@ -38,7 +38,7 @@ Tokenizer 和 Embedding 告诉模型“这是什么 token”，却没有告诉�
 
 两句话包含相近的 token，但位置关系完全不同。Attention 需要一种方式，让位置进入 Q/K 点积，同时又不为每个可能的位置学习一张巨大参数表。
 
-RoPE，也就是 Rotary Position Embedding，选择旋转每个 attention head。位置不同，旋转角度不同；Query 和 Key 使用同一套旋转规则，因此它们的点积会自然带上相对位置差。
+[[RoPE]]，也就是 Rotary Position Embedding，选择旋转每个 attention head。位置不同，旋转角度不同；Query 和 Key 使用同一套旋转规则，因此它们的点积会自然带上相对位置差。
 
 ```text
 position 2 的 Query 与 position 5 的 Key

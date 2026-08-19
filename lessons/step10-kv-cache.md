@@ -10,7 +10,7 @@
 [t0,t1,t2,t3,t4] -> model -> t5
 ```
 
-这样虽然正确，却会反复计算旧 token 的 Attention Key 和 Value。Step 10 先建立 KV Cache 的数据边界，让每个 Decoder Layer 都能记住已经算过的状态：
+这样虽然正确，却会反复计算旧 token 的 Attention Key 和 Value。Step 10 先建立 [[KV Cache]] 的数据边界，让每个 Decoder Layer 都能记住已经算过的状态：
 
 ```text
 prompt prefill

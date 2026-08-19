@@ -6,7 +6,7 @@
 
 这一章先不急着算 Attention。模型要跑起来，至少得先回答两个更朴素的问题：这台 Qwen3 MoE 到底长什么样？几百亿参数又分别放在哪个文件里？
 
-答案就在下载好的模型目录里：`config.json` 是说明书，`model.safetensors.index.json` 和 16 个 Safetensors 分片是零件箱。我们先把这两样读懂。
+答案就在下载好的模型目录里：`config.json` 是说明书，`model.safetensors.index.json` 和 16 个 [[Safetensors]] 分片是零件箱。我们先把这两样读懂。
 
 ## 模型得先知道自己长什么样
 

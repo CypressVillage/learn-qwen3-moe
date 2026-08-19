@@ -8,6 +8,7 @@ import { marked } from "marked";
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../..");
 const outputPath = resolve(here, "../src/generated/content.json");
+const glossaryPath = resolve(root, "lessons/glossary.json");
 const stepSources = [
   {
     id: "step00",
@@ -86,6 +87,16 @@ const stepSources = [
   },
 ];
 
+const glossary = JSON.parse(await readFile(glossaryPath, "utf8"));
+
+function escapeHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
 marked.use({
   gfm: true,
   breaks: false,
@@ -100,6 +111,28 @@ marked.use({
       return `<h${depth} id="${id}">${text}</h${depth}>`;
     },
   },
+  extensions: [
+    {
+      name: "glossaryTerm",
+      level: "inline",
+      start(source) {
+        const index = source.indexOf("[[");
+        return index === -1 ? undefined : index;
+      },
+      tokenizer(source) {
+        const match = /^\[\[([^\]\n]+)\]\]/.exec(source);
+        if (!match) return undefined;
+        return { type: "glossaryTerm", raw: match[0], key: match[1].trim() };
+      },
+      renderer(token) {
+        if (!Object.hasOwn(glossary, token.key)) {
+          throw new Error(`unknown glossary term: ${token.key}`);
+        }
+        const key = escapeHtml(token.key);
+        return `<button class="glossary-term" type="button" data-glossary-key="${key}" aria-label="${key}：查看术语解释">${key}</button>`;
+      },
+    },
+  ],
 });
 
 const steps = await Promise.all(stepSources.map(async (source) => {
@@ -123,5 +156,5 @@ const steps = await Promise.all(stepSources.map(async (source) => {
 }));
 
 await mkdir(dirname(outputPath), { recursive: true });
-await writeFile(outputPath, `${JSON.stringify({ steps })}\n`, "utf8");
+await writeFile(outputPath, `${JSON.stringify({ glossary, steps })}\n`, "utf8");
 console.log(`synced ${steps.length} course lessons`);

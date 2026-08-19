@@ -14,7 +14,7 @@ new token IDs [B,Snew]
   -> logits [B,Snew,V]
 ```
 
-本章实现模型级 `cached()` 路径。它既能用空缓存处理整段 prompt，也能用已有缓存只处理新 token：
+本章实现模型级 `cached()` 路径。它既能用空缓存完成 [[prefill]]，也能用已有缓存执行 [[decode]]：
 
 ```text
 empty cache + prompt       = cached prefill

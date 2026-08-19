@@ -14,7 +14,7 @@
   -> hidden_states [B,S,D]
 ```
 
-这一章要填上中间的 Tokenizer。目标不是发明一种新的分词方法，而是准确执行 `Qwen3-30B-A3B` 已经保存好的 byte-level BPE 规则。只有这样得到的 ID，才会指向训练时对应的 Embedding 行。
+这一章要填上中间的 [[Tokenizer]]。目标不是发明一种新的分词方法，而是准确执行 `Qwen3-30B-A3B` 已经保存好的 byte-level [[BPE]] 规则。只有这样得到的 ID，才会指向训练时对应的 Embedding 行。
 
 ## 先打开 tokenizer.json
 
