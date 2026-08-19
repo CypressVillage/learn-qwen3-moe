@@ -148,6 +148,25 @@ batch 之间不会混在一起，不同 token 位置之间也不会互相求平�
 
 `epsilon` 来自 `config.rms_norm_eps`。它不是可有可无的装饰：当一个向量接近全零时，`epsilon` 防止除数变成零。
 
+:::principle RMSNorm 消除了什么尺度，又保留了什么信息
+
+先暂时忽略 `weight` 和很小的 `epsilon`。若把输入整体乘一个正数 `c`：
+
+```text
+rms(c * x) = sqrt(mean((c * x)^2))
+           = c * rms(x)
+
+(c * x) / rms(c * x) = x / rms(x)
+```
+
+也就是说，向量整体放大 10 倍，归一化后的方向和相对坐标比例几乎不变。若 `c` 为负数，长度仍被消去，但方向会整体翻转；RMSNorm 不会抹掉这个符号信息。
+
+它也不会像 LayerNorm 那样减去均值。因此 RMSNorm 调整的是向量的均方根尺度，而不是强迫每个 token 的 hidden vector 以 0 为中心。最后的 `weight [D]` 再允许模型按坐标学习不同的缩放比例。
+
+`epsilon` 让上面的尺度不变性只在向量明显大于零时近似成立。接近零向量时，它主动主导分母，换取不会除零和更稳定的数值行为。
+
+:::endprinciple
+
 真实模型里会多次看到一维 Norm 权重，例如：
 
 ```text

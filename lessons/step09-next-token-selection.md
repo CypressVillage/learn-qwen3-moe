@@ -194,6 +194,22 @@ probabilities = unnormalized / np.sum(
 
 temperature 变小时，token 0 的概率会更接近 1；temperature 变大时，三个概率会逐渐靠近。temperature 不会把不可能 token 自动过滤掉，它只调节相对分布的尖锐程度。
 
+:::principle temperature 怎样改变两个 token 的相对机会
+
+对两个 token `i` 和 `j`，softmax 概率之比可以直接约掉共同分母：
+
+```text
+p_i / p_j = exp((z_i - z_j) / T)
+```
+
+这个式子比“分布变尖或变平”更精确。`T < 1` 会放大 logits 差距，优势 token 的相对机会呈指数增长；`T > 1` 会压缩差距，让低分 token 更容易被采到。只要 `T > 0`，除法不会改变 logits 排名。
+
+当 `T` 趋近 `0` 的正侧时，概率逐渐集中到最大 logit；当 `T` 趋近无穷大时，有限 logits 之间的差距趋近 0，分布逐渐接近均匀。
+
+这只是极限行为。字面上的 `T = 0` 仍然意味着除零，没有数学定义，因此接口使用独立的 greedy 分支表达确定性选择。
+
+:::endprinciple
+
 本章没有实现 top-k 或 top-p。它们会先截断候选集合，再重新归一化；temperature 则保留完整 vocabulary，只改变各 token 的相对概率。为了让一章只引入一组核心概念，这里先把最基础的 categorical sampling 链路写完整。
 
 为什么 `temperature=0` 不被接受？数学上除以 0 没有定义。工程接口常把 temperature 0 特判成 greedy，但本课程已经提供明确的 `greedy_next_token()`，因此两个行为保持独立：

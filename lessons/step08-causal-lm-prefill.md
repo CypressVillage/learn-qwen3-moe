@@ -308,6 +308,27 @@ logits[:,-1,:]    看完整段 prompt 后的 next-token 预测
 
 真正继续生成时，最关心的是最后一项 `logits[:, -1, :]`。但本章仍返回完整 `[B,S,V]`，因为这是 Causal LM prefill 的自然输出，也能清楚展示每个 prompt 位置都完成了预测。
 
+:::principle 为什么位置 s 的 logits 预测的是 token s+1
+
+输入 token 是 `[t0, t1, ..., t(S-1)]`。由于 causal mask，位置 `s` 的 hidden state `h_s` 最多只能包含前缀 `[t0, ..., ts]` 的信息，因此 LM Head 在这个位置表示的条件分布是：
+
+```text
+logits[:, s, :] -> P(t(s+1) | t0, ..., ts)
+```
+
+位置和目标由此向右错开一格：
+
+```text
+位置 0 hidden state   -> 预测 t1
+位置 1 hidden state   -> 预测 t2
+...
+位置 S-1 hidden state -> 预测 prompt 后的第一个新 token
+```
+
+所以 `logits[:, -1, :]` 不是在重建 prompt 的最后一个 token。它已经看过完整 prompt，给出的是继续生成所需的下一 token 分布。Step 09 对 sequence 维取最后一项，正是利用这个对齐关系。
+
+:::endprinciple
+
 ## 从模型目录跑到 logits
 
 现在可以把前几章的入口连在一起：

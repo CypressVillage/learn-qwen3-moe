@@ -97,6 +97,98 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
+function updateFence(line, fence) {
+  const match = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+  if (!match) return { fence, changed: false };
+  const marker = match[1];
+  const trailing = match[2];
+  if (!fence) {
+    if (marker[0] === "`" && trailing.includes("`")) return { fence, changed: false };
+    return { fence: marker, changed: true };
+  }
+  if (marker[0] === fence[0] && marker.length >= fence.length && !trailing.replaceAll(" ", "")) {
+    return { fence: null, changed: true };
+  }
+  return { fence, changed: false };
+}
+
+function validatePrincipleBlocks(markdown, lessonPath) {
+  let active = null;
+  let bodyHasContent = false;
+  let fence = null;
+  markdown.split("\n").forEach((line, index) => {
+    const lineNumber = index + 1;
+    const transition = updateFence(line, fence);
+    if (transition.changed) {
+      fence = transition.fence;
+      if (active) bodyHasContent = true;
+      return;
+    }
+    if (fence) {
+      if (active && line.trim()) bodyHasContent = true;
+      return;
+    }
+
+    const opener = /^:::principle[ \t]+(\S.*)$/.exec(line);
+    if (opener) {
+      if (active) throw new Error(`nested principle block: ${lessonPath}:${lineNumber}`);
+      active = { title: opener[1], lineNumber };
+      bodyHasContent = false;
+      return;
+    }
+    if (/^:::endprinciple[ \t]*$/.test(line)) {
+      if (!active) throw new Error(`orphan principle closer: ${lessonPath}:${lineNumber}`);
+      if (!bodyHasContent) {
+        throw new Error(`empty principle block: ${lessonPath}:${active.lineNumber}`);
+      }
+      active = null;
+      return;
+    }
+    if (line.trimStart().startsWith(":::principle") || line.trimStart().startsWith(":::endprinciple")) {
+      throw new Error(`malformed principle delimiter: ${lessonPath}:${lineNumber}`);
+    }
+    if (active) {
+      if (line.includes("<!-- checkpoint:")) {
+        throw new Error(`checkpoint inside principle block: ${lessonPath}:${lineNumber}`);
+      }
+      if (line.trim()) bodyHasContent = true;
+    }
+  });
+  if (active) throw new Error(`unterminated principle block: ${lessonPath}:${active.lineNumber}`);
+}
+
+function principleBlock(source, lexer) {
+  const opener = /^:::principle[ \t]+([^\n]+)\n/.exec(source);
+  if (!opener) return undefined;
+
+  let offset = opener[0].length;
+  let fence = null;
+  while (offset <= source.length) {
+    const lineEnd = source.indexOf("\n", offset);
+    const nextOffset = lineEnd === -1 ? source.length : lineEnd + 1;
+    const line = source.slice(offset, lineEnd === -1 ? source.length : lineEnd);
+    const transition = updateFence(line, fence);
+    if (transition.changed) {
+      fence = transition.fence;
+    } else if (!fence && /^:::endprinciple[ \t]*$/.test(line)) {
+      const body = source.slice(opener[0].length, offset).trim();
+      if (!body) throw new Error(`empty principle block: ${opener[1].trim()}`);
+      if (/<!-- checkpoint:/.test(body)) {
+        throw new Error(`checkpoint inside principle block: ${opener[1].trim()}`);
+      }
+      return {
+        type: "principleBlock",
+        raw: source.slice(0, nextOffset),
+        title: opener[1].trim(),
+        tokens: lexer.blockTokens(body),
+      };
+    }
+    if (lineEnd === -1) break;
+    offset = nextOffset;
+  }
+  throw new Error(`unterminated principle block: ${opener[1].trim()}`);
+}
+
 marked.use({
   gfm: true,
   breaks: false,
@@ -112,6 +204,22 @@ marked.use({
     },
   },
   extensions: [
+    {
+      name: "principleBlock",
+      level: "block",
+      start(source) {
+        const match = /^:::principle[ \t]+\S/m.exec(source);
+        return match?.index;
+      },
+      tokenizer(source) {
+        return principleBlock(source, this.lexer);
+      },
+      renderer(token) {
+        const title = escapeHtml(token.title);
+        return `<details class="principle-block"><summary class="principle-summary"><span class="principle-label">原理深入</span><span class="principle-title">${title}</span><span class="principle-chevron" aria-hidden="true">&rsaquo;</span></summary><div class="principle-body">${this.parser.parse(token.tokens)}</div></details>\n`;
+      },
+      childTokens: ["tokens"],
+    },
     {
       name: "glossaryTerm",
       level: "inline",
@@ -140,6 +248,7 @@ const steps = await Promise.all(stepSources.map(async (source) => {
     readFile(resolve(root, source.lessonPath), "utf8"),
     readFile(resolve(root, source.checkpointPath), "utf8"),
   ]);
+  validatePrincipleBlocks(markdown, source.lessonPath);
   const markdownWithAnchors = markdown.replace(
     /<!-- checkpoint: ([a-z0-9-]+) -->/g,
     '<div class="checkpoint-anchor" data-checkpoint="$1" aria-hidden="true"></div>',

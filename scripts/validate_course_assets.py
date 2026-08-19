@@ -7,9 +7,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
 CHECKPOINT_REF = re.compile(r"<!-- checkpoint: ([a-z0-9-]+) -->")
-FENCED_CODE = re.compile(r"^(```|~~~).*?^\1[ \t]*$", re.MULTILINE | re.DOTALL)
 INLINE_CODE = re.compile(r"`+[^`\n]*`+")
 GLOSSARY_REF = re.compile(r"\[\[([^\]\n]+)\]\]")
+PRINCIPLE_OPEN = re.compile(r"^:::principle[ \t]+(\S.*)$")
+PRINCIPLE_CLOSE = re.compile(r"^:::endprinciple[ \t]*$")
+FENCE_LINE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 
 
 def _is_line_subsequence(earlier: str, later: str) -> bool:
@@ -19,6 +21,29 @@ def _is_line_subsequence(earlier: str, later: str) -> bool:
         if line == expected:
             expected = next(earlier_lines, None)
     return expected is None
+
+
+def _update_fence(line: str, fence: str | None) -> tuple[str | None, bool]:
+    match = FENCE_LINE.match(line)
+    if match is None:
+        return fence, False
+    marker, trailing = match.groups()
+    if fence is None:
+        if marker[0] == "`" and "`" in trailing:
+            return fence, False
+        return marker, True
+    if marker[0] == fence[0] and len(marker) >= len(fence) and not trailing.strip(" "):
+        return None, True
+    return fence, False
+
+
+def _without_fenced_code(markdown: str) -> str:
+    fence: str | None = None
+    prose: list[str] = []
+    for line in markdown.splitlines():
+        fence, changed = _update_fence(line, fence)
+        prose.append("" if fence is not None or changed else line)
+    return "\n".join(prose)
 
 
 def _validate_glossary(lesson_paths: list[Path]) -> int:
@@ -35,13 +60,70 @@ def _validate_glossary(lesson_paths: list[Path]) -> int:
     references = 0
     for lesson_path in lesson_paths:
         lesson = lesson_path.read_text(encoding="utf-8")
-        prose = INLINE_CODE.sub("", FENCED_CODE.sub("", lesson))
+        prose = INLINE_CODE.sub("", _without_fenced_code(lesson))
         for key in GLOSSARY_REF.findall(prose):
             assert key == key.strip(), f"glossary reference has surrounding whitespace: {key!r}"
             assert key in glossary, f"unknown glossary term in {lesson_path.name}: {key}"
             references += 1
     assert references, "no glossary references found"
     return references
+
+
+def _validate_principles(lesson_paths: list[Path]) -> int:
+    blocks = 0
+    for lesson_path in lesson_paths:
+        active: tuple[str, int] | None = None
+        body_has_content = False
+        fence: str | None = None
+        for line_number, line in enumerate(
+            lesson_path.read_text(encoding="utf-8").splitlines(), start=1
+        ):
+            fence, changed = _update_fence(line, fence)
+            if changed:
+                if active is not None:
+                    body_has_content = True
+                continue
+            if fence is not None:
+                if active is not None and line.strip():
+                    body_has_content = True
+                continue
+
+            opener = PRINCIPLE_OPEN.fullmatch(line)
+            if opener:
+                assert active is None, (
+                    f"nested principle block in {lesson_path.name}:{line_number}"
+                )
+                active = (opener.group(1), line_number)
+                body_has_content = False
+                continue
+            if PRINCIPLE_CLOSE.fullmatch(line):
+                assert active is not None, (
+                    f"orphan principle closer in {lesson_path.name}:{line_number}"
+                )
+                assert body_has_content, (
+                    f"empty principle block in {lesson_path.name}:{active[1]}"
+                )
+                active = None
+                blocks += 1
+                continue
+            if line.lstrip().startswith((":::principle", ":::endprinciple")):
+                raise AssertionError(
+                    f"malformed principle delimiter in {lesson_path.name}:{line_number}"
+                )
+            if active is not None:
+                assert "<!-- checkpoint:" not in line, (
+                    f"checkpoint inside principle block in {lesson_path.name}:{line_number}"
+                )
+                if line.strip():
+                    body_has_content = True
+
+        assert active is None, (
+            f"unterminated principle block in {lesson_path.name}:{active[1]}"
+            if active is not None
+            else ""
+        )
+    assert blocks, "no principle blocks found"
+    return blocks
 
 
 def _validate_step(checkpoint_path: Path, require_current_source: bool) -> int:
@@ -118,9 +200,10 @@ def main() -> None:
     )
     lesson_paths = sorted((ROOT / "lessons").glob("step*.md"))
     glossary_references = _validate_glossary(lesson_paths)
+    principle_blocks = _validate_principles(lesson_paths)
     print(
         f"validated {total} checkpoints across {len(checkpoint_paths)} lessons "
-        f"and {glossary_references} glossary references"
+        f"with {glossary_references} glossary references and {principle_blocks} principle blocks"
     )
 
 

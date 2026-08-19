@@ -116,6 +116,29 @@ logits = model.cached(next_token[:, None], cache)
 
 每次 decode 后 cache 长度增加 1，下一轮 logits 也只包含新位置 `[1,1,V]`。`last_token_logits()` 对 prefill 的 `[1,S,V]` 和 decode 的 `[1,1,V]` 都适用。
 
+:::principle generated、cache 与 logits 为什么总会短暂错开一个 token
+
+prefill 完成后，prompt 的每个 token 都已经进入模型：
+
+```text
+generated length = S
+cache length     = S
+current logits   = 预测位置 S
+```
+
+从 logits 选出 `tS` 并追加到 `generated` 后，这个 token 已经属于输出，却还没有经过模型：
+
+```text
+generated length = S + 1
+cache length     = S
+```
+
+只有执行 `model.cached(tS, cache)`，缓存才增长到 `S+1`，返回的 logits 则预测位置 `S+1`。因此循环始终在“选择一个 token”和“让这个 token 进入模型”之间交替。
+
+这个状态不变量解释了两个常见错误：把完整 `generated` 再次传入会把历史重复追加；已经达到 EOS 或生成上限后继续 decode，则会为一个永远不会被选择的后续 token 做无用计算。
+
+:::endprinciple
+
 ## 两个停止条件
 
 循环最多运行 `max_new_tokens` 次。这个上限不是最终总长度，而是 prompt 之外允许新增的 token 数：

@@ -166,6 +166,24 @@ rotated(x) = x * cosine + rotate_half(x) * sine
 
 当 angle 为 0 时，`cosine = 1`、`sine = 0`，结果仍是 `x`。当位置变化时，同一个平面里的两个坐标会互相混合，但向量的 shape 不变。
 
+:::principle RoPE 的点积为什么只留下相对位置
+
+把一个二维坐标对在位置 `p` 的旋转写成矩阵 `R(p * omega)`。Query 位于 `p`，Key 位于 `r` 时，旋转后的点积是：
+
+```text
+(R(p * omega) q)^T (R(r * omega) k)
+= q^T R(p * omega)^T R(r * omega) k
+= q^T R((r - p) * omega) k
+```
+
+第二步使用了旋转矩阵的性质：转置等于反向旋转，而连续两次旋转的角度可以相加。于是 Query 的绝对角度 `p * omega` 与 Key 的绝对角度 `r * omega` 合并后，只剩位置差 `(r - p)`。
+
+真实 head 不只包含一个二维平面，而是用多组 `omega` 同时旋转。高频坐标对位置变化更敏感，低频坐标覆盖更长距离；Attention 点积因此能从多个尺度感知相对位置。
+
+`_rotate_half()` 使用前半与后半配对，而不是把相邻元素配对，但它实现的仍是同一组独立二维旋转。
+
+:::endprinciple
+
 ## 同一套位置旋转应用到 Query 和 Key
 
 Attention 拆 heads 后，Query 和 Key 的 shape 分别是：

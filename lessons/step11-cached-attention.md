@@ -12,7 +12,7 @@ decode：只输入新 token，让 Query 读取历史缓存
 数据流将从原来的方形 Attention：
 
 ```text
-Q [B,Hq,S,S] x K/V from same S tokens
+Q [B,Hq,S,Dh] x K/V from same S tokens
 ```
 
 变成允许 query length 与 key length 不同：
@@ -134,6 +134,26 @@ np.triu(np.ones((query_length, key_length), dtype=bool), k=k)
 ```
 
 当没有缓存时，`key_length == query_length`，继续使用 Step 05 的普通方形 mask。当有历史 Key 时，才切换到矩形 mask。两条路径最终都广播到 Attention scores 的 `[B,Hq,Squery,Skey]`。
+
+:::principle 矩形 causal mask 的对角线为什么要向右移动
+
+设历史缓存长度为 `C`。本轮第 `i` 个新 Query 的绝对位置是 `C + i`，Key 第 `j` 列的绝对位置就是 `j`。因果关系允许读取当前位置和过去，因此可见条件是：
+
+```text
+j <= C + i
+```
+
+反过来，需要遮挡的条件是 `j > C + i`。在 `[Snew, C+Snew]` 的矩阵中，这恰好对应：
+
+```text
+np.triu(mask, k=C+1)
+```
+
+当 `C=0` 时，它退化成普通方形 mask 的 `k=1`；当 `Snew=1` 时，唯一的新 Query 位于绝对位置 `C`，可以读取 `0..C` 的全部 Key，所以整行都不遮挡。
+
+缓存路径与一次性完整 Attention 要得到相同结果，必须同时满足三件事：历史 Key 保留原来的 RoPE 位置、新 Query 从位置 `C` 继续编号、mask 使用上面的绝对位置可见关系。
+
+:::endprinciple
 
 ## 用同一组权重比较两条路径
 

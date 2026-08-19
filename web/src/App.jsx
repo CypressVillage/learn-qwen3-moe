@@ -325,10 +325,14 @@ function useReadingCheckpoint(checkpoints) {
     };
 
     scheduleUpdate();
+    const lessonContent = document.querySelector(".lesson-content");
+    const resizeObserver = new ResizeObserver(scheduleUpdate);
+    if (lessonContent) resizeObserver.observe(lessonContent);
     window.addEventListener("scroll", scheduleUpdate, { passive: true });
     window.addEventListener("resize", scheduleUpdate);
     return () => {
       window.cancelAnimationFrame(frame);
+      resizeObserver.disconnect();
       window.removeEventListener("scroll", scheduleUpdate);
       window.removeEventListener("resize", scheduleUpdate);
     };

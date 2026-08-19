@@ -43,6 +43,22 @@ Attention(Q_new, K_history, V_history)
 
 我们不缓存 Query。旧 Query 只用于生成旧位置输出，预测新 token 时只需要当前新位置的 Query。
 
+:::principle KV Cache 节省了什么，又为什么没有让 Attention 变成 O(1)
+
+没有缓存时，每生成一个 token，都要让不断增长的完整前缀重新经过 Q/K/V 投影。使用缓存后，旧位置的 Key 和 Value 不再投影，只为新 token 计算新的 Q/K/V。
+
+但新 Query 仍然要与全部历史 Key 做点积，并用全部历史 Value 加权。因此单个 decode step 的 Attention 工作量仍随当前上下文长度 `S` 线性增长，而不是常数时间。
+
+缓存本身大约保存下面数量的元素：
+
+```text
+2 * L * B * Hkv * S * Dh
+```
+
+`2` 来自 Key 和 Value，`L` 是层数。GQA 只缓存 `Hkv` 个头，而不是扩展后的 `Hq` 个头，所以占用会降为按 Query heads 缓存时的 `Hkv / Hq`。当前配置 `Hkv=4`、`Hq=32`，缓存量只有后者的八分之一；重复到 32 heads 只发生在当轮 Attention 计算时。
+
+:::endprinciple
+
 ## 每层拥有独立槽位
 
 <!-- checkpoint: step10-storage -->

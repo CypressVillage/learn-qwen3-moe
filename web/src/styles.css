@@ -85,6 +85,18 @@ button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible { outline: 2
 .glossary-card strong { color: #f0f5f2; font-size: 16px; line-height: 1.25; }
 .glossary-card small { color: var(--cyan); font: 600 10px/1.4 var(--code-font); }
 .glossary-card p { margin: 4px 0 0; color: #b9c5c0; font-size: 13px; line-height: 1.65; }
+.principle-block { max-width: 780px; margin: 28px 0; border: 1px solid #3c4945; border-left: 3px solid var(--cyan); background: color-mix(in srgb, var(--panel-2) 82%, transparent); }
+.principle-summary { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 15px 17px; cursor: pointer; list-style: none; }
+.principle-summary::-webkit-details-marker { display: none; }
+.principle-summary:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+.principle-summary:hover { background: color-mix(in srgb, var(--cyan) 7%, transparent); }
+.principle-label { color: var(--cyan); font: 800 9px var(--code-font); letter-spacing: .12em; white-space: nowrap; }
+.principle-title { color: #e6ece9; font-weight: 700; line-height: 1.45; }
+.principle-chevron { color: var(--muted); font-size: 22px; line-height: 1; transition: transform .15s ease; }
+.principle-block[open] .principle-chevron { transform: rotate(90deg); }
+.principle-body { padding: 18px 20px 20px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 82%, transparent); }
+.principle-body > :first-child { margin-top: 0; }
+.principle-body > :last-child { margin-bottom: 0; }
 .lesson-content code { font-family: var(--code-font); font-size: .9em; font-variant-ligatures: none; color: #d9f28d; background: #151b19; padding: 2px 5px; }
 .lesson-content pre { max-width: 100%; overflow: auto; background: #0d1111; border: 1px solid var(--line); border-left: 3px solid #4d5a57; padding: 18px; line-height: 1.55; }
 .lesson-content pre code { background: none; padding: 0; color: #b8c7c2; }
@@ -223,6 +235,8 @@ button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible { outline: 2
 :root[data-theme="light"] .glossary-card::after { background: #f8f8f3; border-color: #8ea064; }
 :root[data-theme="light"] .glossary-card strong { color: #17211d; }
 :root[data-theme="light"] .glossary-card p { color: #46524d; }
+:root[data-theme="light"] .principle-block { border-color: #aeb8b3; border-left-color: var(--cyan); }
+:root[data-theme="light"] .principle-title { color: #26322d; }
 :root[data-theme="light"] .lesson-content code { color: #476500; background: #e5e9df; }
 :root[data-theme="light"] .lesson-content pre { border-left-color: #8c9791; }
 :root[data-theme="light"] .lesson-content pre code { color: #36423d; }

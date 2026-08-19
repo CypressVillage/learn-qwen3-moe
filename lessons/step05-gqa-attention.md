@@ -255,6 +255,28 @@ probabilities[b,h,q,:] = softmax(scores[b,h,q,:])
 
 左侧实现先减去每一行最大值，再计算指数。这不会改变 softmax 结果，却能避免较大的正 score 在 `exp()` 时溢出。点积、softmax 和 Value 加权都使用 `float32`，优先保证 CPU 教学实现的数值稳定。
 
+:::principle 为什么除以 sqrt(Hd)，减最大值又为何不改变概率
+
+一个 Query 与一个 Key 的点积会累加 `Hd` 项。若各坐标近似独立、均值为 0、方差为 1，那么和的方差大约是：
+
+```text
+Var(q0*k0 + ... + q(Hd-1)*k(Hd-1)) ~= Hd
+```
+
+所以点积的典型幅度会随 `sqrt(Hd)` 增长。再除以 `sqrt(Hd)`，就能把不同 head dimension 下的 score 拉回相近尺度，避免 softmax 仅因为维度变大就过早接近 one-hot。
+
+对任意常数 `c`，softmax 的每一项都满足：
+
+```text
+exp(x_i - c) / sum_j exp(x_j - c)
+= exp(x_i) * exp(-c) / (sum_j exp(x_j) * exp(-c))
+= exp(x_i) / sum_j exp(x_j)
+```
+
+因此选择 `c = max(x)` 不会改变概率，却让最大的指数恰好是 `exp(0) = 1`。被 causal mask 写成 `-inf` 的位置则有 `exp(-inf) = 0`，归一化后仍严格为 0。
+
+:::endprinciple
+
 最后让 probabilities 对 Value 做加权求和：
 
 ```text
