@@ -50,6 +50,48 @@ def _checkpoint_abstraction_source() -> str:
     return "".join(lines[: discovery_start - 1])
 
 
+def _package_source() -> str:
+    excluded_modules = (
+        "tokenizer",
+        "layers",
+        "rope",
+        "attention",
+        "moe",
+        "cache",
+        "model",
+        "generation",
+    )
+    excluded_exports = {
+        "Embedding",
+        "KVCache",
+        "Linear",
+        "Qwen3Attention",
+        "Qwen3DecoderLayer",
+        "Qwen3MoeExperts",
+        "Qwen3MoeForCausalLM",
+        "Qwen3MoeRouter",
+        "Qwen3SparseMoeBlock",
+        "Qwen3Tokenizer",
+        "RMSNorm",
+        "RotaryEmbedding",
+        "apply_rotary_position_embedding",
+        "generate_text",
+        "generate_token_ids",
+        "greedy_next_token",
+        "last_token_logits",
+        "next_token_probabilities",
+        "sample_next_token",
+    }
+    return "".join(
+        line
+        for line in _source_text("src/qwen3_moe/__init__.py").splitlines(
+            keepends=True
+        )
+        if not any(f"qwen3_moe.{module}" in line for module in excluded_modules)
+        and not any(f'"{name}"' in line for name in excluded_exports)
+    )
+
+
 def _focus_range(
     content: str, marker: str, line_count: int, occurrence: int = 1
 ) -> dict[str, object]:
@@ -76,8 +118,9 @@ def generate() -> None:
     source_files = [
         "src/qwen3_moe/config.py",
         "src/qwen3_moe/checkpoint.py",
+        "src/qwen3_moe/__init__.py",
     ]
-    config_path, checkpoint_path = source_files
+    config_path, checkpoint_path, package_path = source_files
     empty = {relative_path: "" for relative_path in source_files}
     config_contract = {**empty, config_path: _config_contract_source()}
     config_validation = {**config_contract, config_path: _source_text(config_path)}
@@ -98,6 +141,10 @@ def generate() -> None:
     tensor_loading = {
         **header_validation,
         checkpoint_path: _source_text(checkpoint_path),
+    }
+    package_export = {
+        **tensor_loading,
+        package_path: _package_source(),
     }
     staged_checkpoints = [
         {
@@ -171,6 +218,16 @@ def generate() -> None:
             ),
             "contents": tensor_loading,
             "diff": {"kind": "insert", "files": [checkpoint_path]},
+        },
+        {
+            "id": "step01-package",
+            "label": "从包入口导出配置与权重读取能力",
+            "active_file": package_path,
+            "focus_range": _focus_range(
+                package_export[package_path], "from qwen3_moe.checkpoint", 9
+            ),
+            "contents": package_export,
+            "diff": {"kind": "insert", "files": [package_path]},
         },
     ]
     checkpoint_data = {

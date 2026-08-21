@@ -5,7 +5,8 @@
       "diff": {
         "files": [
           "src/qwen3_moe/config.py",
-          "src/qwen3_moe/checkpoint.py"
+          "src/qwen3_moe/checkpoint.py",
+          "src/qwen3_moe/__init__.py"
         ],
         "kind": "initial"
       },
@@ -25,6 +26,10 @@
           {
             "content": "",
             "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/__init__.py"
           }
         ]
       },
@@ -54,6 +59,10 @@
           {
             "content": "",
             "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/__init__.py"
           }
         ]
       },
@@ -83,6 +92,10 @@
           {
             "content": "",
             "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/__init__.py"
           }
         ]
       },
@@ -112,6 +125,10 @@
           {
             "content": "\"\"\"Read named tensors from a Safetensors checkpoint.\"\"\"\n\nfrom __future__ import annotations\n\nimport json\nimport math\nimport struct\nfrom dataclasses import dataclass\nfrom pathlib import Path\nfrom typing import Any\n\nimport numpy as np\n\n\n_DTYPE_WIDTHS = {\n    \"BF16\": 2,\n    \"F16\": 2,\n    \"F32\": 4,\n    \"I32\": 4,\n    \"I64\": 8,\n}\n\n_NUMPY_DTYPES = {\n    \"F16\": np.dtype(\"<f2\"),\n    \"F32\": np.dtype(\"<f4\"),\n    \"I32\": np.dtype(\"<i4\"),\n    \"I64\": np.dtype(\"<i8\"),\n}\n\n\n@dataclass(frozen=True, slots=True)\nclass TensorInfo:\n    \"\"\"Where one tensor lives inside one Safetensors shard.\"\"\"\n\n    name: str\n    dtype: str\n    shape: tuple[int, ...]\n    shard: str\n    data_offsets: tuple[int, int]\n    data_start: int\n\n\nclass SafetensorsCheckpoint:\n    \"\"\"A name-to-tensor view over one or more Safetensors files.\"\"\"\n\n    def __init__(self, directory: Path, tensors: dict[str, TensorInfo]) -> None:\n        self.directory = directory\n        self._tensors = tensors\n\n",
             "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/__init__.py"
           }
         ]
       },
@@ -141,6 +158,10 @@
           {
             "content": "\"\"\"Read named tensors from a Safetensors checkpoint.\"\"\"\n\nfrom __future__ import annotations\n\nimport json\nimport math\nimport struct\nfrom dataclasses import dataclass\nfrom pathlib import Path\nfrom typing import Any\n\nimport numpy as np\n\n\n_DTYPE_WIDTHS = {\n    \"BF16\": 2,\n    \"F16\": 2,\n    \"F32\": 4,\n    \"I32\": 4,\n    \"I64\": 8,\n}\n\n_NUMPY_DTYPES = {\n    \"F16\": np.dtype(\"<f2\"),\n    \"F32\": np.dtype(\"<f4\"),\n    \"I32\": np.dtype(\"<i4\"),\n    \"I64\": np.dtype(\"<i8\"),\n}\n\n\n@dataclass(frozen=True, slots=True)\nclass TensorInfo:\n    \"\"\"Where one tensor lives inside one Safetensors shard.\"\"\"\n\n    name: str\n    dtype: str\n    shape: tuple[int, ...]\n    shard: str\n    data_offsets: tuple[int, int]\n    data_start: int\n\n\nclass SafetensorsCheckpoint:\n    \"\"\"A name-to-tensor view over one or more Safetensors files.\"\"\"\n\n    def __init__(self, directory: Path, tensors: dict[str, TensorInfo]) -> None:\n        self.directory = directory\n        self._tensors = tensors\n\n    @classmethod\n    def from_directory(cls, directory: str | Path) -> \"SafetensorsCheckpoint\":\n        root = Path(directory)\n        index_files = sorted(root.glob(\"*.safetensors.index.json\"))\n        if index_files:\n            tensors = _read_index(root, index_files[0])\n        else:\n            shards = sorted(root.glob(\"*.safetensors\"))\n            if len(shards) != 1:\n                raise ValueError(\"expected one Safetensors file or one index\")\n            tensors = _read_shard(shards[0])\n        return cls(root, tensors)\n\n    def keys(self) -> tuple[str, ...]:\n        return tuple(sorted(self._tensors))\n\n    def tensor_info(self, name: str) -> TensorInfo:\n        try:\n            return self._tensors[name]\n        except KeyError as error:\n            raise KeyError(f\"unknown tensor: {name}\") from error\n\n",
             "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/__init__.py"
           }
         ]
       },
@@ -170,6 +191,10 @@
           {
             "content": "\"\"\"Read named tensors from a Safetensors checkpoint.\"\"\"\n\nfrom __future__ import annotations\n\nimport json\nimport math\nimport struct\nfrom dataclasses import dataclass\nfrom pathlib import Path\nfrom typing import Any\n\nimport numpy as np\n\n\n_DTYPE_WIDTHS = {\n    \"BF16\": 2,\n    \"F16\": 2,\n    \"F32\": 4,\n    \"I32\": 4,\n    \"I64\": 8,\n}\n\n_NUMPY_DTYPES = {\n    \"F16\": np.dtype(\"<f2\"),\n    \"F32\": np.dtype(\"<f4\"),\n    \"I32\": np.dtype(\"<i4\"),\n    \"I64\": np.dtype(\"<i8\"),\n}\n\n\n@dataclass(frozen=True, slots=True)\nclass TensorInfo:\n    \"\"\"Where one tensor lives inside one Safetensors shard.\"\"\"\n\n    name: str\n    dtype: str\n    shape: tuple[int, ...]\n    shard: str\n    data_offsets: tuple[int, int]\n    data_start: int\n\n\nclass SafetensorsCheckpoint:\n    \"\"\"A name-to-tensor view over one or more Safetensors files.\"\"\"\n\n    def __init__(self, directory: Path, tensors: dict[str, TensorInfo]) -> None:\n        self.directory = directory\n        self._tensors = tensors\n\n    @classmethod\n    def from_directory(cls, directory: str | Path) -> \"SafetensorsCheckpoint\":\n        root = Path(directory)\n        index_files = sorted(root.glob(\"*.safetensors.index.json\"))\n        if index_files:\n            tensors = _read_index(root, index_files[0])\n        else:\n            shards = sorted(root.glob(\"*.safetensors\"))\n            if len(shards) != 1:\n                raise ValueError(\"expected one Safetensors file or one index\")\n            tensors = _read_shard(shards[0])\n        return cls(root, tensors)\n\n    def keys(self) -> tuple[str, ...]:\n        return tuple(sorted(self._tensors))\n\n    def tensor_info(self, name: str) -> TensorInfo:\n        try:\n            return self._tensors[name]\n        except KeyError as error:\n            raise KeyError(f\"unknown tensor: {name}\") from error\n\n\n\ndef _read_index(root: Path, path: Path) -> dict[str, TensorInfo]:\n    index = json.loads(path.read_text(encoding=\"utf-8\"))\n    weight_map = index.get(\"weight_map\")\n    if not isinstance(weight_map, dict):\n        raise ValueError(\"Safetensors index must contain weight_map\")\n\n    shard_headers = {\n        shard_name: _read_shard(root / shard_name)\n        for shard_name in sorted(set(weight_map.values()))\n    }\n    tensors: dict[str, TensorInfo] = {}\n    for name, shard_name in weight_map.items():\n        try:\n            tensors[name] = shard_headers[shard_name][name]\n        except KeyError as error:\n            raise ValueError(f\"index points to a missing tensor: {name}\") from error\n    return tensors\n\n\ndef _read_shard(path: Path) -> dict[str, TensorInfo]:\n    with path.open(\"rb\") as handle:\n        prefix = handle.read(8)\n        if len(prefix) != 8:\n            raise ValueError(f\"invalid Safetensors file: {path.name}\")\n        (header_length,) = struct.unpack(\"<Q\", prefix)\n        header = json.loads(handle.read(header_length))\n\n    data_start = 8 + header_length\n    data_size = path.stat().st_size - data_start\n    tensors: dict[str, TensorInfo] = {}\n    for name, metadata in header.items():\n        if name != \"__metadata__\":\n            tensors[name] = _tensor_info(\n                name, metadata, path.name, data_start, data_size\n            )\n    return tensors\n\n\ndef _tensor_info(\n    name: str,\n    metadata: Any,\n    shard: str,\n    data_start: int,\n    data_size: int,\n) -> TensorInfo:\n    dtype = metadata[\"dtype\"]\n    shape = tuple(metadata[\"shape\"])\n    start, end = metadata[\"data_offsets\"]\n    if dtype not in _DTYPE_WIDTHS:\n        raise ValueError(f\"unsupported Safetensors dtype: {dtype}\")\n    if start < 0 or end > data_size:\n        raise ValueError(f\"tensor offsets are outside {shard}: {name}\")\n    expected_bytes = math.prod(shape) * _DTYPE_WIDTHS[dtype]\n    if end - start != expected_bytes:\n        raise ValueError(f\"tensor shape does not match its byte range: {name}\")\n    return TensorInfo(name, dtype, shape, shard, (start, end), data_start)\n",
             "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/__init__.py"
           }
         ]
       },
@@ -199,6 +224,43 @@
           {
             "content": "\"\"\"Read named tensors from a Safetensors checkpoint.\"\"\"\n\nfrom __future__ import annotations\n\nimport json\nimport math\nimport struct\nfrom dataclasses import dataclass\nfrom pathlib import Path\nfrom typing import Any\n\nimport numpy as np\n\n\n_DTYPE_WIDTHS = {\n    \"BF16\": 2,\n    \"F16\": 2,\n    \"F32\": 4,\n    \"I32\": 4,\n    \"I64\": 8,\n}\n\n_NUMPY_DTYPES = {\n    \"F16\": np.dtype(\"<f2\"),\n    \"F32\": np.dtype(\"<f4\"),\n    \"I32\": np.dtype(\"<i4\"),\n    \"I64\": np.dtype(\"<i8\"),\n}\n\n\n@dataclass(frozen=True, slots=True)\nclass TensorInfo:\n    \"\"\"Where one tensor lives inside one Safetensors shard.\"\"\"\n\n    name: str\n    dtype: str\n    shape: tuple[int, ...]\n    shard: str\n    data_offsets: tuple[int, int]\n    data_start: int\n\n\nclass SafetensorsCheckpoint:\n    \"\"\"A name-to-tensor view over one or more Safetensors files.\"\"\"\n\n    def __init__(self, directory: Path, tensors: dict[str, TensorInfo]) -> None:\n        self.directory = directory\n        self._tensors = tensors\n\n    @classmethod\n    def from_directory(cls, directory: str | Path) -> \"SafetensorsCheckpoint\":\n        root = Path(directory)\n        index_files = sorted(root.glob(\"*.safetensors.index.json\"))\n        if index_files:\n            tensors = _read_index(root, index_files[0])\n        else:\n            shards = sorted(root.glob(\"*.safetensors\"))\n            if len(shards) != 1:\n                raise ValueError(\"expected one Safetensors file or one index\")\n            tensors = _read_shard(shards[0])\n        return cls(root, tensors)\n\n    def keys(self) -> tuple[str, ...]:\n        return tuple(sorted(self._tensors))\n\n    def tensor_info(self, name: str) -> TensorInfo:\n        try:\n            return self._tensors[name]\n        except KeyError as error:\n            raise KeyError(f\"unknown tensor: {name}\") from error\n\n    def load_tensor(self, name: str) -> np.ndarray:\n        \"\"\"Read one tensor payload instead of loading the whole checkpoint.\"\"\"\n\n        info = self.tensor_info(name)\n        start, end = info.data_offsets\n        with (self.directory / info.shard).open(\"rb\") as handle:\n            handle.seek(info.data_start + start)\n            payload = handle.read(end - start)\n        if len(payload) != end - start:\n            raise ValueError(f\"tensor payload is truncated: {name}\")\n\n        if info.dtype == \"BF16\":\n            words = np.frombuffer(payload, dtype=\"<u2\").astype(np.uint32)\n            array = (words << 16).view(np.float32)\n        else:\n            array = np.frombuffer(payload, dtype=_NUMPY_DTYPES[info.dtype]).copy()\n        return array.reshape(info.shape)\n\n\ndef _read_index(root: Path, path: Path) -> dict[str, TensorInfo]:\n    index = json.loads(path.read_text(encoding=\"utf-8\"))\n    weight_map = index.get(\"weight_map\")\n    if not isinstance(weight_map, dict):\n        raise ValueError(\"Safetensors index must contain weight_map\")\n\n    shard_headers = {\n        shard_name: _read_shard(root / shard_name)\n        for shard_name in sorted(set(weight_map.values()))\n    }\n    tensors: dict[str, TensorInfo] = {}\n    for name, shard_name in weight_map.items():\n        try:\n            tensors[name] = shard_headers[shard_name][name]\n        except KeyError as error:\n            raise ValueError(f\"index points to a missing tensor: {name}\") from error\n    return tensors\n\n\ndef _read_shard(path: Path) -> dict[str, TensorInfo]:\n    with path.open(\"rb\") as handle:\n        prefix = handle.read(8)\n        if len(prefix) != 8:\n            raise ValueError(f\"invalid Safetensors file: {path.name}\")\n        (header_length,) = struct.unpack(\"<Q\", prefix)\n        header = json.loads(handle.read(header_length))\n\n    data_start = 8 + header_length\n    data_size = path.stat().st_size - data_start\n    tensors: dict[str, TensorInfo] = {}\n    for name, metadata in header.items():\n        if name != \"__metadata__\":\n            tensors[name] = _tensor_info(\n                name, metadata, path.name, data_start, data_size\n            )\n    return tensors\n\n\ndef _tensor_info(\n    name: str,\n    metadata: Any,\n    shard: str,\n    data_start: int,\n    data_size: int,\n) -> TensorInfo:\n    dtype = metadata[\"dtype\"]\n    shape = tuple(metadata[\"shape\"])\n    start, end = metadata[\"data_offsets\"]\n    if dtype not in _DTYPE_WIDTHS:\n        raise ValueError(f\"unsupported Safetensors dtype: {dtype}\")\n    if start < 0 or end > data_size:\n        raise ValueError(f\"tensor offsets are outside {shard}: {name}\")\n    expected_bytes = math.prod(shape) * _DTYPE_WIDTHS[dtype]\n    if end - start != expected_bytes:\n        raise ValueError(f\"tensor shape does not match its byte range: {name}\")\n    return TensorInfo(name, dtype, shape, shard, (start, end), data_start)\n",
             "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "",
+            "path": "src/qwen3_moe/__init__.py"
+          }
+        ]
+      },
+      "step": "step01"
+    },
+    {
+      "active_file": "src/qwen3_moe/__init__.py",
+      "diff": {
+        "files": [
+          "src/qwen3_moe/__init__.py"
+        ],
+        "kind": "insert"
+      },
+      "focus_range": {
+        "end": 10,
+        "start": 3,
+        "symbol": "from qwen3_moe.checkpoint"
+      },
+      "id": "step01-package",
+      "label": "从包入口导出配置与权重读取能力",
+      "repository_snapshot": {
+        "files": [
+          {
+            "content": "\"\"\"Qwen3 MoE architecture configuration.\"\"\"\n\nimport json\nfrom dataclasses import dataclass, field\nfrom pathlib import Path\nfrom typing import Any\n\n\n@dataclass(frozen=True, slots=True)\nclass Qwen3MoeConfig:\n    \"\"\"The config fields that shape Qwen3 MoE inference.\"\"\"\n\n    vocab_size: int\n    hidden_size: int\n    intermediate_size: int\n    moe_intermediate_size: int\n    num_hidden_layers: int\n    num_attention_heads: int\n    num_key_value_heads: int\n    head_dim: int\n    num_experts: int\n    num_experts_per_tok: int\n    max_position_embeddings: int\n    decoder_sparse_step: int = 1\n    mlp_only_layers: tuple[int, ...] = ()\n    norm_topk_prob: bool = True\n    rms_norm_eps: float = 1e-6\n    rope_theta: float = 1_000_000.0\n    tie_word_embeddings: bool = False\n    rope_scaling: dict[str, Any] | None = None\n    model_type: str = \"qwen3_moe\"\n    extra_fields: dict[str, Any] = field(default_factory=dict, repr=False)\n\n    def __post_init__(self) -> None:\n        positive_fields = (\n            \"vocab_size\",\n            \"hidden_size\",\n            \"intermediate_size\",\n            \"moe_intermediate_size\",\n            \"num_hidden_layers\",\n            \"num_attention_heads\",\n            \"num_key_value_heads\",\n            \"head_dim\",\n            \"num_experts\",\n            \"num_experts_per_tok\",\n            \"max_position_embeddings\",\n            \"decoder_sparse_step\",\n        )\n        for name in positive_fields:\n            value = getattr(self, name)\n            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:\n                raise ValueError(f\"{name} must be a positive integer\")\n        if self.num_attention_heads % self.num_key_value_heads != 0:\n            raise ValueError(\"num_attention_heads must divide into KV head groups\")\n        if self.head_dim % 2:\n            raise ValueError(\"head_dim must be even for RoPE\")\n        if self.num_experts_per_tok > self.num_experts:\n            raise ValueError(\"num_experts_per_tok cannot exceed num_experts\")\n\n    @classmethod\n    def from_json(cls, path: str | Path) -> \"Qwen3MoeConfig\":\n        \"\"\"Read the fields we use and keep the rest for later chapters.\"\"\"\n\n        raw = json.loads(Path(path).read_text(encoding=\"utf-8\"))\n        if not isinstance(raw, dict):\n            raise ValueError(\"config.json must contain an object\")\n\n        known_fields = set(cls.__dataclass_fields__) - {\"extra_fields\"}\n        values = {name: raw[name] for name in known_fields if name in raw}\n        values[\"mlp_only_layers\"] = tuple(raw.get(\"mlp_only_layers\", ()))\n        values[\"extra_fields\"] = {\n            name: value for name, value in raw.items() if name not in known_fields\n        }\n        try:\n            return cls(**values)\n        except TypeError as error:\n            raise ValueError(\n                f\"config.json is missing or mis-shapes a field: {error}\"\n            ) from error\n",
+            "path": "src/qwen3_moe/config.py"
+          },
+          {
+            "content": "\"\"\"Read named tensors from a Safetensors checkpoint.\"\"\"\n\nfrom __future__ import annotations\n\nimport json\nimport math\nimport struct\nfrom dataclasses import dataclass\nfrom pathlib import Path\nfrom typing import Any\n\nimport numpy as np\n\n\n_DTYPE_WIDTHS = {\n    \"BF16\": 2,\n    \"F16\": 2,\n    \"F32\": 4,\n    \"I32\": 4,\n    \"I64\": 8,\n}\n\n_NUMPY_DTYPES = {\n    \"F16\": np.dtype(\"<f2\"),\n    \"F32\": np.dtype(\"<f4\"),\n    \"I32\": np.dtype(\"<i4\"),\n    \"I64\": np.dtype(\"<i8\"),\n}\n\n\n@dataclass(frozen=True, slots=True)\nclass TensorInfo:\n    \"\"\"Where one tensor lives inside one Safetensors shard.\"\"\"\n\n    name: str\n    dtype: str\n    shape: tuple[int, ...]\n    shard: str\n    data_offsets: tuple[int, int]\n    data_start: int\n\n\nclass SafetensorsCheckpoint:\n    \"\"\"A name-to-tensor view over one or more Safetensors files.\"\"\"\n\n    def __init__(self, directory: Path, tensors: dict[str, TensorInfo]) -> None:\n        self.directory = directory\n        self._tensors = tensors\n\n    @classmethod\n    def from_directory(cls, directory: str | Path) -> \"SafetensorsCheckpoint\":\n        root = Path(directory)\n        index_files = sorted(root.glob(\"*.safetensors.index.json\"))\n        if index_files:\n            tensors = _read_index(root, index_files[0])\n        else:\n            shards = sorted(root.glob(\"*.safetensors\"))\n            if len(shards) != 1:\n                raise ValueError(\"expected one Safetensors file or one index\")\n            tensors = _read_shard(shards[0])\n        return cls(root, tensors)\n\n    def keys(self) -> tuple[str, ...]:\n        return tuple(sorted(self._tensors))\n\n    def tensor_info(self, name: str) -> TensorInfo:\n        try:\n            return self._tensors[name]\n        except KeyError as error:\n            raise KeyError(f\"unknown tensor: {name}\") from error\n\n    def load_tensor(self, name: str) -> np.ndarray:\n        \"\"\"Read one tensor payload instead of loading the whole checkpoint.\"\"\"\n\n        info = self.tensor_info(name)\n        start, end = info.data_offsets\n        with (self.directory / info.shard).open(\"rb\") as handle:\n            handle.seek(info.data_start + start)\n            payload = handle.read(end - start)\n        if len(payload) != end - start:\n            raise ValueError(f\"tensor payload is truncated: {name}\")\n\n        if info.dtype == \"BF16\":\n            words = np.frombuffer(payload, dtype=\"<u2\").astype(np.uint32)\n            array = (words << 16).view(np.float32)\n        else:\n            array = np.frombuffer(payload, dtype=_NUMPY_DTYPES[info.dtype]).copy()\n        return array.reshape(info.shape)\n\n\ndef _read_index(root: Path, path: Path) -> dict[str, TensorInfo]:\n    index = json.loads(path.read_text(encoding=\"utf-8\"))\n    weight_map = index.get(\"weight_map\")\n    if not isinstance(weight_map, dict):\n        raise ValueError(\"Safetensors index must contain weight_map\")\n\n    shard_headers = {\n        shard_name: _read_shard(root / shard_name)\n        for shard_name in sorted(set(weight_map.values()))\n    }\n    tensors: dict[str, TensorInfo] = {}\n    for name, shard_name in weight_map.items():\n        try:\n            tensors[name] = shard_headers[shard_name][name]\n        except KeyError as error:\n            raise ValueError(f\"index points to a missing tensor: {name}\") from error\n    return tensors\n\n\ndef _read_shard(path: Path) -> dict[str, TensorInfo]:\n    with path.open(\"rb\") as handle:\n        prefix = handle.read(8)\n        if len(prefix) != 8:\n            raise ValueError(f\"invalid Safetensors file: {path.name}\")\n        (header_length,) = struct.unpack(\"<Q\", prefix)\n        header = json.loads(handle.read(header_length))\n\n    data_start = 8 + header_length\n    data_size = path.stat().st_size - data_start\n    tensors: dict[str, TensorInfo] = {}\n    for name, metadata in header.items():\n        if name != \"__metadata__\":\n            tensors[name] = _tensor_info(\n                name, metadata, path.name, data_start, data_size\n            )\n    return tensors\n\n\ndef _tensor_info(\n    name: str,\n    metadata: Any,\n    shard: str,\n    data_start: int,\n    data_size: int,\n) -> TensorInfo:\n    dtype = metadata[\"dtype\"]\n    shape = tuple(metadata[\"shape\"])\n    start, end = metadata[\"data_offsets\"]\n    if dtype not in _DTYPE_WIDTHS:\n        raise ValueError(f\"unsupported Safetensors dtype: {dtype}\")\n    if start < 0 or end > data_size:\n        raise ValueError(f\"tensor offsets are outside {shard}: {name}\")\n    expected_bytes = math.prod(shape) * _DTYPE_WIDTHS[dtype]\n    if end - start != expected_bytes:\n        raise ValueError(f\"tensor shape does not match its byte range: {name}\")\n    return TensorInfo(name, dtype, shape, shard, (start, end), data_start)\n",
+            "path": "src/qwen3_moe/checkpoint.py"
+          },
+          {
+            "content": "\"\"\"Qwen3 MoE inference framework.\"\"\"\n\nfrom qwen3_moe.checkpoint import SafetensorsCheckpoint, TensorInfo\nfrom qwen3_moe.config import Qwen3MoeConfig\n\n__all__ = [\n    \"Qwen3MoeConfig\",\n    \"SafetensorsCheckpoint\",\n    \"TensorInfo\",\n]\n",
+            "path": "src/qwen3_moe/__init__.py"
           }
         ]
       },

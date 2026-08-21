@@ -208,6 +208,10 @@ header 里每个 tensor 大概长这样：
 
 Qwen3 权重常用 BF16。NumPy 没有在这里直接保留 BF16 array，所以代码先把每个 16-bit word 放到一个 32-bit word 的高 16 位，再把它看成 `float32`。这样后面的 CPU 小张量实现可以直接计算。
 
+<!-- checkpoint: step01-package -->
+
+最后把这一章完成的类型写进 `__init__.py`。`Qwen3MoeConfig` 是模型结构入口，`SafetensorsCheckpoint` 是按名字读取权重的入口，`TensorInfo` 则描述一个权重在分片中的元数据。这样使用者不需要知道它们分别定义在哪个模块，可以直接从 `qwen3_moe` 包导入。
+
 完整使用方式只有几行：
 
 ```python
