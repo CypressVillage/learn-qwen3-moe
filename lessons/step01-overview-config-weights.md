@@ -79,13 +79,25 @@ print(config.num_experts)         # Router 要给多少个专家打分
 print(config.num_experts_per_tok) # 每个 token 选几个专家
 ```
 
-到这里，我们知道该造一台什么样的模型了。但模型仍然是空的。真正的数值还躺在 Safetensors 分片里。
+到这里，`config.json` 已经处理完成。我们知道该创建多少层 Decoder、每层有多少个 Attention heads 和专家，以及各种 hidden states 应该是什么 shape。
 
-## 为什么要有 SafetensorsCheckpoint
+但配置只描述模型的结构，不包含模型在训练中学到的参数值。Embedding 表、Attention 投影矩阵和专家权重这些真正参与计算的数字，仍然保存在模型目录的 Safetensors 文件里。只有把它们读出来并放到对应模块中，这台只有结构的“空模型”才能开始推理。
+
+因此，Step 01 的后半段要从 `config.py` 转到 `checkpoint.py`，解决第二个模型资产问题：给定一个参数名，怎样从一个或多个 Safetensors 文件中找到并读出对应的 NumPy tensor。后面的 Embedding、Attention 和 MoE 都会依赖这个入口加载自己的权重。
+
+```text
+config.json
+  -> 告诉代码模型由哪些模块组成、每个 tensor 应该是什么 shape
+
+Safetensors 权重
+  -> 提供这些 tensor 在训练后得到的具体数值
+```
+
+## 为什么不让模型代码直接读取 Safetensors
 
 直接使用文件时，后面的模型代码会同时遇到几类细节：权重可能是单文件，也可能被拆成多个分片；参数名要先经过 index 才能找到分片；找到分片后还要解析 header、计算 byte offset、处理 dtype，最后才能得到 NumPy tensor。如果 Embedding、Attention 和 MoE 都自己处理这些步骤，文件格式细节就会散落到整个模型实现里。
 
-所以这里把问题收拢成一个很小的接口：我们定义一个 `SafetensorsCheckpoint` 类，它不是 Safetensors 格式自带的类，也不是从 Transformers 里复制来的。它是这个课程为了完整推理链路自己定义的一层权重访问接口。
+所以这里把权重读取问题收拢成一个很小的接口：我们定义一个 `SafetensorsCheckpoint` 类。它不是 Safetensors 格式自带的类，也不是从 Transformers 里复制来的，而是这个课程为了完整推理链路自己定义的一层权重访问接口。
 
 ```text
 SafetensorsCheckpoint
