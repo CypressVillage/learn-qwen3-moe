@@ -184,7 +184,7 @@
         "kind": "insert"
       },
       "focus_range": {
-        "end": 95,
+        "end": 88,
         "start": 72,
         "symbol": "def load_tensor"
       },

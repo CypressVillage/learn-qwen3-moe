@@ -167,7 +167,7 @@ def generate() -> None:
             "label": "按名字只读取一个 tensor",
             "active_file": checkpoint_path,
             "focus_range": _focus_range(
-                tensor_loading[checkpoint_path], "def load_tensor", 24
+                tensor_loading[checkpoint_path], "def load_tensor", 17
             ),
             "contents": tensor_loading,
             "diff": {"kind": "insert", "files": [checkpoint_path]},
