@@ -16,25 +16,55 @@
 
 这一章要填上中间的 [[Tokenizer]]。目标不是发明一种新的分词方法，而是准确执行 `Qwen3-30B-A3B` 已经保存好的 byte-level [[BPE]] 规则。只有这样得到的 ID，才会指向训练时对应的 Embedding 行。
 
-## 先打开 tokenizer.json
+## 先看懂模型目录里的 Tokenizer 资产
 
-模型目录里同时有 `tokenizer.json`、`vocab.json`、`merges.txt` 和 `tokenizer_config.json`。它们不是四套 tokenizer，而是同一套规则的不同保存形式。
-
-这一章直接读取 `tokenizer.json`，因为它已经把运行 encode 所需的内容放在了一起：
+一个 Qwen3 模型目录里通常不只有一个与 Tokenizer 有关的文件。先把它们放在同一张地图上：
 
 ```text
-tokenizer.json
-  |-- model.vocab          token 字符串 -> token ID
-  |-- model.merges         BPE 合并顺序
-  |-- pre_tokenizer        一段文字先怎样粗切分
-  `-- added_tokens         <|im_start|> 等 special tokens
+模型目录
+  |-- tokenizer.json
+  |     |-- added_tokens       special token 的字符串与 ID
+  |     |-- pre_tokenizer      BPE 前怎样粗切分文本
+  |     |-- model.vocab        token 字符串 -> token ID
+  |     |-- model.merges       BPE 合并顺序
+  |     `-- decoder 等         官方 Tokenizer 的其他流水线阶段
+  |-- tokenizer_config.json
+  |     |-- bos/eos/pad token  special token 的调用语义
+  |     |-- model_max_length   调用层声明的最大长度
+  |     `-- chat_template      对话消息怎样排成 prompt
+  |-- vocab.json               vocabulary 的独立保存形式
+  `-- merges.txt               merge 规则的独立保存形式
 ```
 
-`tokenizer_config.json` 里的 chat template 很重要，但它解决的是“怎样把多轮对话排成一段 prompt”，不是“这段 prompt 怎样变成 token IDs”。为了沿真实数据流一次只解决一个问题，本章先不实现聊天模板。
+有些发布目录还会包含 `special_tokens_map.json`，单独记录 BOS、EOS、PAD 等角色与 token 字符串的对应关系。文件数量看起来很多，但它们不是互不相关的多套 Tokenizer：`vocab.json` 与 `merges.txt` 是 BPE 核心数据的拆分形式，`tokenizer.json` 把这些数据和预切分等执行步骤收在一起，`tokenizer_config.json` 则补充上层调用约定。
+
+这里要先区分两个问题：
+
+```text
+messages
+  -> chat template
+  -> prompt 字符串
+  -> Tokenizer encode
+  -> token IDs
+```
+
+`chat_template` 解决的是“怎样把 system、user、assistant 等多轮消息排成模型训练时见过的 prompt”；BPE 解决的是“已经得到的 prompt 字符串怎样变成 token IDs”。本章只接收一段已经准备好的字符串，因此会解释 chat template 的位置，但暂不实现它。后面的端到端入口也仍把输入视为 raw prompt，而不是自动套用对话模板。
+
+这一章直接读取 `tokenizer.json`，因为它已经包含当前单条推理所需的核心规则。左侧代码实际使用的字段只有：
+
+```text
+model.type             确认这是 BPE 模型
+model.vocab            建立 token 与 ID 的对应关系
+model.merges           建立 merge rank
+pre_tokenizer          找到 Qwen3 保存的 Split 正则
+added_tokens           识别 <|im_start|> 等 special tokens
+```
+
+`tokenizer.json` 还可能声明 `normalizer`、`post_processor`、`decoder`、padding 和 truncation 等阶段。本课程没有假装实现整套通用 Tokenizers 运行时：它只实现 Qwen3 当前推理主线真正用到的 byte-level BPE，并在 `decode()` 中显式完成 byte 到 UTF-8 文本的还原。是否自动添加 BOS/EOS、怎样 padding、怎样截断，也都留给更外层调用者决定。
 
 <!-- checkpoint: step02-assets -->
 
-左侧的 `from_file()` 先取出 BPE 模型的 `vocab` 和 `merges`，再找到正则预切分规则与 special tokens。
+带着这张资产地图再看左侧的 `from_file()`：它先取出 BPE 模型的 `vocab` 和 `merges`，再找到正则预切分规则与 special tokens。`tokenizer_config.json`、`vocab.json` 和 `merges.txt` 没有再次读取，因为当前实现已经能从聚合后的 `tokenizer.json` 得到同一条 encode 链路所需的数据。
 
 词表的方向是：
 

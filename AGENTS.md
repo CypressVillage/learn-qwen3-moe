@@ -41,7 +41,7 @@
 - 当前分支：`master`
 - Step 00 至 Step 14：完成；主线课程已经从文本输入闭合到生成文本输出。
 - 当前源码：`generate_text()` 从模型目录加载 config、Safetensors、Tokenizer 与完整模型，编码单条 prompt，调用 cached 自回归循环，再将完整 token 序列解码回文本。
-- 当前正文：已完成 `lessons/step00-inference-map.md` 至 `lessons/step14-end-to-end-inference.md`；Step 00 开头已补充教程目标、学习路径与实现边界，Step 14 汇总模型资产、文本入口、生成参数、解码出口与完整推理地图。
+- 当前正文：已完成 `lessons/step00-inference-map.md` 至 `lessons/step14-end-to-end-inference.md`；Step 00 开头已补充教程目标、学习路径与实现边界；Step 02 已补充 Tokenizer 资产地图，区分 `tokenizer.json` 的 BPE 执行数据、`tokenizer_config.json` 的调用层约定、拆分资产和本课程实际读取的字段；Step 14 汇总模型资产、文本入口、生成参数、解码出口与完整推理地图。
 - 当前阅读资产：Step 14 有 4 个 insert-only checkpoint，最终快照等于当前源码；历史 checkpoint 保持逐行可累积。
 - 当前网站：Vite/React 静态入口 `/` 与 `/step00/` 至 `/step14/`；课程导航与源码阅读器已接入全部主线章节，顶部章节目录支持视口内滚动；源码高亮覆盖完整横向滚动宽度，EXPLORER 支持折叠扩宽代码区；课程正文通过 `lessons/glossary.json` 与显式 `[[术语]]` 标记提供桌面悬停、键盘聚焦和移动端点击解释卡片，并通过同文件 `:::principle` 块提供 9 处默认折叠的数学与实现原理推导；原理块解析遵循 Markdown fenced code 边界，展开或折叠后会重新计算滚动关联的 checkpoint；`scripts/build_site.py` 提供课程资产生成、校验和前端构建的一条命令入口。
 - Step 01 阅读资产：`step01-config-contract` 的高亮范围从 `config.py` 文件首行开始，包含模块说明、imports、`@dataclass` 与完整配置字段；配置正文按源码顺序先讲 `__post_init__()`，再讲 `from_json()`；完成 `config.json` 后先区分结构配置与训练所得权重，并明确后半段将从 `config.py` 转向 `checkpoint.py`，再解释课程自定义的 `SafetensorsCheckpoint` 抽象，随后依次高亮基础状态、index 发现、header 解析和 tensor payload 读取；`step01-load-tensor` 精确高亮 `load_tensor()` 的 72–88 行，避免带入后续 `_read_index()`；章末通过 `step01-package` 将配置、checkpoint 与 tensor 元数据类型写入 `__init__.py`，与 Step 02 的起始快照连续衔接。
